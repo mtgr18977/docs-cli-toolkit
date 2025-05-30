@@ -1,0 +1,45 @@
+# pyproject.toml (VERSÃO REVISADA E CENTRALIZADA)
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+# backend-path não é necessário se setuptools é puxado como dependência
+
+[project]
+name = "docs-cli"
+version = "0.1.0"
+authors = [
+  { name="Paulo Guilherme Pilott", email="seuemail@example.com" },
+]
+description = "Um toolkit para processamento e avaliação de documentação."
+readme = "README.md"
+requires-python = ">=3.8" # Definido aqui
+license = { text = "MIT License" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Documentation",
+    "Topic :: Utilities",
+    "Environment :: Console",
+]
+
+dependencies = [ # Equivalente a install_requires
+    "google-generativeai",
+    "python-dotenv",
+    "numpy",
+    "pandas"
+]
+
+# Definindo TODOS os scripts de console aqui
+[project.scripts]
+docs-cli = "docs_tc:main"
+docs-tc-merge-markdown = "merge_markdown:cli_main"
+docs-tc-extract-data = "extract_data_from_markdown:cli_main"
+docs-tc-generate-embeddings = "generate_embedings:cli_main" # Mantenha o nome do módulo com typo se o arquivo for assim
+docs-tc-clean-csv = "limpa_csv:cli_main"
+docs-tc-evaluate-coverage = "evaluate_coverage:cli_main"
+docs-tc-generate-report-md = "generate_report:cli_main"
+docs-tc-generate-report-html = "generate_report_html:cli_main"
