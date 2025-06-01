@@ -65,7 +65,31 @@ docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave
 ### 4. Limpeza de CSV
 Limpa e processa arquivos CSV de perguntas e respostas:
 ```bash
-docs-cli clean_csv <arquivo_entrada.csv> [--output_file arquivo_saída.csv]
+docs-cli clean_csv <arquivo_entrada.csv> [--output_file arquivo_saída.csv] [--question_col coluna_perguntas] [--response_col coluna_respostas] [--encoding utf-8] [--min_length 10] [--no_clean_text] [--invalid_patterns padrão1 padrão2 ...]
+```
+
+Opções disponíveis:
+- `--output_file`: Arquivo CSV de saída limpo (padrão: gartner_filtrado_processed.csv)
+- `--question_col`: Nome da coluna de perguntas (padrão: question)
+- `--response_col`: Nome da coluna de respostas (padrão: response)
+- `--encoding`: Encoding do arquivo CSV (padrão: utf-8)
+- `--min_length`: Tamanho mínimo para respostas válidas (padrão: 10)
+- `--no_clean_text`: Não limpar o texto das respostas
+- `--invalid_patterns`: Lista de padrões inválidos para remover
+
+Exemplos:
+```bash
+# Limpeza básica
+docs-cli clean_csv qa-data.csv
+
+# Especificando colunas diferentes
+docs-cli clean_csv qa-data.csv --question_col "pergunta" --response_col "resposta"
+
+# Configurando encoding e tamanho mínimo
+docs-cli clean_csv qa-data.csv --encoding "latin1" --min_length 20
+
+# Adicionando padrões inválidos personalizados
+docs-cli clean_csv qa-data.csv --invalid_patterns "Selecione uma opção" "Clique aqui" "Escolha um item"
 ```
 
 ### 5. Avaliação de Cobertura

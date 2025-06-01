@@ -111,6 +111,18 @@ def main():
     parser_clean_csv.add_argument("input_file", help="Arquivo CSV de entrada a ser limpo (ex: qa-data.csv).")
     parser_clean_csv.add_argument("--output_file", default=DEFAULT_QA_PROCESSED,
                                   help=f"Arquivo CSV de saída limpo (padrão: {DEFAULT_QA_PROCESSED}).")
+    parser_clean_csv.add_argument("--question_col", default="question",
+                                  help="Nome da coluna de perguntas (padrão: question)")
+    parser_clean_csv.add_argument("--response_col", default="response",
+                                  help="Nome da coluna de respostas (padrão: response)")
+    parser_clean_csv.add_argument("--encoding", default="utf-8",
+                                  help="Encoding do arquivo CSV (padrão: utf-8)")
+    parser_clean_csv.add_argument("--min_length", type=int, default=10,
+                                  help="Tamanho mínimo para respostas válidas (padrão: 10)")
+    parser_clean_csv.add_argument("--no_clean_text", action="store_true",
+                                  help="Não limpar o texto das respostas")
+    parser_clean_csv.add_argument("--invalid_patterns", nargs="+",
+                                  help="Lista de padrões inválidos para remover")
 
     # --- Subparser para evaluate_coverage.py ---
     parser_evaluate = subparsers.add_parser("evaluate", help="Avalia a cobertura da documentação.")
@@ -304,7 +316,25 @@ def main():
                 run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
                 qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
-                run_custom_step_or_exit([SCRIPT_MAP["clean_csv"], qa_input_file, current_cleaned_qa_file])
+                command_args = [SCRIPT_MAP["clean_csv"], qa_input_file]
+                
+                # Adicionar argumentos opcionais se fornecidos
+                if hasattr(args, "output_file") and args.output_file:
+                    command_args.extend(["--output_file", args.output_file])
+                if hasattr(args, "question_col") and args.question_col:
+                    command_args.extend(["--question_col", args.question_col])
+                if hasattr(args, "response_col") and args.response_col:
+                    command_args.extend(["--response_col", args.response_col])
+                if hasattr(args, "encoding") and args.encoding:
+                    command_args.extend(["--encoding", args.encoding])
+                if hasattr(args, "min_length") and args.min_length:
+                    command_args.extend(["--min_length", str(args.min_length)])
+                if hasattr(args, "no_clean_text") and args.no_clean_text:
+                    command_args.append("--no_clean_text")
+                if hasattr(args, "invalid_patterns") and args.invalid_patterns:
+                    command_args.extend(["--invalid_patterns"] + args.invalid_patterns)
+                
+                run_custom_step_or_exit(command_args)
             elif step == "evaluate":
                 if not os.path.exists(current_cleaned_qa_file):
                      current_cleaned_qa_file = input(f"Arquivo QA limpo ({current_cleaned_qa_file}) não encontrado. Informe o caminho correto: ")
