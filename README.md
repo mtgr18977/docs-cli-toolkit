@@ -1,202 +1,142 @@
-# Toolkit de Análise e Cobertura de Documentação Técnica (`docs-cli`)
+# Docs CLI Toolkit
 
-Este toolkit fornece um conjunto de scripts Python para processar documentação técnica em formato Markdown, gerar embeddings semânticos, avaliar a cobertura da documentação em relação a um conjunto de perguntas e respostas, e gerar relatórios detalhados. O script principal `docs_tc.py` orquestra a execução dos scripts individuais.
+Uma ferramenta de linha de comando para processamento e análise de documentação, com suporte a geração de embeddings usando a API do Google Gemini.
 
-## Pré-requisitos
-
-1.  **Python 3.7+**: certifique-se de que o Python está instalado e configurado no seu PATH.
-2.  **Dependências Python**: instale as bibliotecas necessárias. É recomendado criar um ambiente virtual:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # Linux/macOS
-    # venv\Scripts\activate    # Windows
-    pip install google-generativeai python-dotenv numpy pandas
-    ```
-    Você também pode criar um arquivo `requirements.txt` com o conteúdo acima e rodar `pip install -r requirements.txt`.
-3.  **Chave da API Google Gemini**:
-    * Crie um arquivo chamado `.env` na raiz do projeto.
-    * Dentro do `.env`, adicione sua chave da API:
-        ```
-        GOOGLE_API_KEY="SUA_CHAVE_API_AQUI"
-        ```
-    * **IMPORTANTE**: o arquivo `.env` contém informações sensíveis e **não deve ser versionado** no Git. Adicione `.env` ao seu arquivo `.gitignore`.
-
-## Estrutura de Arquivos Esperada (Antes da Execução)  
-
-```txt
-/seu-projeto-raiz/
-|-- docs_tc.py                   # Script orquestrador principal
-|-- merge_markdown.py            # Script para consolidar .md
-|-- extract_data_from_markdown.py  # Script para extrair dados do .md consolidado
-|-- generate_embeddings.py        # Script para gerar embeddings
-|-- limpa_csv.py                 # Script para limpar o CSV de Q&A
-|-- evaluate_coverage.py         # Script para avaliar a cobertura
-|-- generate_report.py           # Script para gerar relatório .md
-|-- generate_report_html.py      # Script para gerar relatório .html
-```
-## Arquivos Gerados (e não versionados por padrão):
-
-Os seguintes arquivos são gerados durante a execução dos scripts. É recomendado adicioná-los ao seu `.gitignore` se você não pretende versioná-los:
-
-- `corpus_consolidated.md`
-- `raw_docs.json`
-- `embedings.json` (ou o nome que você usar para o arquivo de embeddings)
-- `gartner_filtrado_processed.csv` (ou o nome do seu CSV de Q&A limpo)
-- `evaluation_results.json`
-- `coverage_report.md`
-- `coverage_report.html`
-
-### Configuração do `.gitignore`:
-
-#### Arquivos de Ambiente
-```gitignore	
-.env
-chaves/.env
-```
-#### Arquivos de Dados Gerados
-```gitignore
-# Ignorar arquivos gerados automaticamente 
-*.json
-*.csv
-*.md
-*.html
-```
-
-#### Exceto os arquivos que SÃO parte do toolkit/interface
+## Instalação
 
 ```bash
-# Mantenha estes arquivos versionados (exceções à regra global)
-!docs_tc.py
-!merge_markdown.py
-!extract_data_from_markdown.py
-!generate_embedings.py
-!limpa_csv.py
-!evaluate_coverage.py
-!generate_report.py
-!generate_report_html.py
-!assistente/index.html
-!assistente/about.html
-!assistente/mudanca.html
-!README.md
-!requirements.txt
+pip install docs-cli-toolkit
 ```
 
-#### Arquivos de Cache Python
-```gitignore	
-pycache/
-*.py[cod]
-*$py.class
-```
-#### Ambiente Virtual
-```gitignore
-venv/
-```
+## Configuração da API do Google Gemini
 
-- Ajuste o `.gitignore` acima para manter os arquivos `.md` e `.html` que são parte da sua documentação ou da ferramenta em si (como este `README.md` ou o `index.html` da interface).*
-- No exemplo acima, `*.json`, `*.csv`, `*.md`, `*.html` são ignorados globalmente, e depois exceções são adicionadas. Seus arquivos de documentação originais em `DocumentosMD/` e o CSV bruto em `DadosQA/` **não serão ignorados** por esta configuração, o que é o desejado.*
+A ferramenta oferece três maneiras de configurar a chave da API do Google Gemini:
 
-## Utilização do `docs-cli`
+1. **Configuração Global (Recomendada)**:
+   ```bash
+   docs-cli api "sua-chave-api"
+   ```
+   Para verificar a chave configurada (parcialmente mascarada):
+   ```bash
+   docs-cli api --show
+   ```
 
-O `docs_tc.py` é o ponto de entrada principal para utilizar o toolkit. Abra um terminal na raiz do projeto.
+2. **Via Linha de Comando**:
+   ```bash
+   docs-cli --api "sua-chave-api" generate_embeddings input.json output.json
+   ```
 
-### 1. Ajuda Geral e de Comandos:
+3. **Via Variável de Ambiente**:
+   Crie um arquivo `.env` no diretório do projeto:
+   ```
+   GOOGLE_API_KEY=sua-chave-api
+   ```
 
+## Comandos Disponíveis
+
+### 1. Merge de Documentos
+Consolida múltiplos arquivos Markdown em um único arquivo:
 ```bash
-docs-cli -h
-docs-cli <comando> -h  # Ex: docs-cli merge -h
+docs-cli merge <diretório_entrada> [--output_file arquivo_saída.md]
 ```
-### 2. Execução de Comandos Individuais:
 
-Cada script pode ser chamado por um subcomando. Os nomes de arquivo padrão são usados se não especificados.
-
-#### Consolidar Documentos (`merge`):
-
+### 2. Extração de Dados
+Extrai dados estruturados do Markdown consolidado:
 ```bash
-docs-cli merge ./docs/ --output_file corpus_consolidated.md
-
+docs-cli extract [--input_file arquivo_entrada.md] [--output_file arquivo_saída.json]
 ```
 
-- `./docs/`: Diretório contendo seus arquivos .md originais.
-- `-output_file`: (opcional) Nome do arquivo consolidado. Padrão: `corpus_consolidated.md`.
-
-#### Extrair Dados do Markdown Consolidado (`extract`):
-
+### 3. Geração de Embeddings
+Gera embeddings para os documentos processados:
 ```bash
-docs-cli extract --input_file corpus_consolidated.md --output_file raw_docs.json
+docs-cli generate_embeddings [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
 ```
 
-- `-input_file`: (Opcional) Arquivo .md consolidado. Padrão: `corpus_consolidated.md`.
-- `-output_file`: (Opcional) Arquivo JSON para os dados brutos. Padrão: `raw_docs.json`.
-
-#### Gerar Embeddings (`generate_embeddings`):
-
+### 4. Limpeza de CSV
+Limpa e processa arquivos CSV de perguntas e respostas:
 ```bash
-docs-cli generate_embeddings --input_file raw_docs.json --output_file embeddings.json
+docs-cli clean_csv <arquivo_entrada.csv> [--output_file arquivo_saída.csv]
 ```
 
-- `-input_file`: (Opcional) Arquivo JSON com os dados brutos. Padrão: `raw_docs.json`.
-- `-output_file`: (Opcional) Arquivo JSON para os embeddings. Padrão: `embeddings.json`.
-
-#### Limpar CSV de Q&A (`clean_csv`):
-
+### 5. Avaliação de Cobertura
+Avalia a cobertura da documentação:
 ```bash
-docs-cli clean_csv ./csv/qa_bruto.csv --output_file qa_processado.csv
+docs-cli evaluate <arquivo_qa.csv> <arquivo_embeddings.json> [-k N] [-o arquivo_saída.json]
 ```
 
-- `./csv/qa_bruto.csv`: Caminho para o arquivo CSV de perguntas e respostas bruto.
-- `-output_file`: (Opcional) Nome do arquivo CSV processado. Padrão: `gartner_filtrado_processed.csv`.
-
-#### Avaliar Cobertura (`evaluate_coverage`):
-
+### 6. Geração de Relatórios
+Gera relatórios em Markdown e HTML:
 ```bash
-docs-cli evaluate qa_processado.csv embeddings.json -k 5 -o evaluation_results.json
+# Relatório em Markdown
+docs-cli report_md [--input_file arquivo_entrada.json] [--output_file relatório.md] [--top_k_chunks N]
+
+# Relatório em HTML
+docs-cli report_html [--input_file arquivo_entrada.json] [--output_file relatório.html] [--top_k_chunks N]
 ```
 
-- `qa_processado.csv`: Caminho para o arquivo CSV de perguntas e respostas processado.
-- `embeddings.json`: Caminho para o arquivo JSON com os embeddings.
-- `-k`: (Opcional) Número de resultados a retornar. Padrão: 5.
-- `-o`: (Opcional) Nome do arquivo JSON para os resultados da avaliação. Padrão: `evaluation_results.json`.
-De forma geral, os parâmetros são:
-
-| Parâmetro                | Tipo    | Obrigatório | Descrição                                                                                       |
-|--------------------------|---------|-------------|-------------------------------------------------------------------------------------------------|
-| `qa_file`                | string  | Sim         | Caminho para o arquivo CSV com perguntas e respostas                                            |
-| `embeddings_file`        | string  | Sim         | Caminho para o arquivo JSON com os chunks processados e embeddings                              |
-| `-k`, `--top-k`          | inteiro | Não         | Número de chunks mais relevantes a considerar (padrão: `5`)                                       |
-| `-o`, `--output`         | string  | Não         | Caminho do arquivo de saída para os resultados (padrão: `evaluation_results.json`)              |
-
-#### Gerar Relatório Markdown (`generate_report`):
-
+### 7. Fluxo Completo
+Executa todo o pipeline de processamento:
 ```bash
-docs-cli generate_report evaluation_results.json --output_file coverage_report.md
+docs-cli full_flow <diretório_docs> <arquivo_qa.csv> [--eval_top_k N]
 ```
 
-- `evaluation_results.json`: Caminho para o arquivo JSON com os resultados da avaliação.
-- `-output_file`: (Opcional) Nome do arquivo Markdown para o relatório. Padrão: `coverage_report.md`.
-
-#### Gerar Relatório HTML (`generate_report_html`):
-
+### 8. Fluxo Customizado
+Executa uma sequência personalizada de etapas:
 ```bash
-docs-cli generate_report_html evaluation_results.json --output_file coverage_report.html
+docs-cli custom_flow <etapas...>
 ```
+Etapas disponíveis: `merge`, `extract`, `generate_embeddings`, `clean_csv`, `evaluate`, `report_md`, `report_html`
 
-- `evaluation_results.json`: Caminho para o arquivo JSON com os resultados da avaliação.
-- `-output_file`: (Opcional) Nome do arquivo HTML para o relatório. Padrão: `coverage_report.html`.
+## Exemplos de Uso
 
-## Executando o Toolkit Completo
-Para executar todo o fluxo de trabalho do toolkit, você pode usar o comando principal `docs_tc.py` com o subcomando `full_flow`. Este comando executa todos os passos necessários, desde a consolidação dos documentos até a geração dos relatórios.
-
+### Processamento Básico
 ```bash
-docs-cli full_flow ./docs/ ./csv/qa_bruto.csv --eval_top_k 5 --embeddings_file embedings.json
+# Configurar a API (uma única vez)
+docs-cli api "sua-chave-api"
+
+# Processar documentação
+docs-cli full_flow docs/ qa-data.csv
 ```
 
-## Manutenção e Versionamento
+### Fluxo Customizado
+```bash
+# Executar apenas merge e extração
+docs-cli custom_flow merge extract
 
-- NÃO FAÇA COMMIT do seu arquivo `.env` contendo a `GOOGLE_API_KEY`.
-- NÃO FAÇA COMMIT dos arquivos de dados gerados automaticamente (como `corpus_consolidated.md`, `raw_docs.json`, `embedings.json`, `evaluation_results.json`, etc.), a menos que tenha um motivo específico para versionar um estado particular desses dados. Adicione-os ao seu `.gitignore`.
-- O arquivo CSV original com os dados de Q&A e os arquivos Markdown originais da sua documentação podem e devem ser versionados se fizerem parte da fonte do seu projeto.
+# Executar geração de embeddings com chave API temporária
+docs-cli --api "chave-temporária" custom_flow generate_embeddings
+```
 
----
+### Geração de Relatórios
+```bash
+# Gerar relatório em Markdown
+docs-cli report_md --input_file evaluation_results.json --output_file coverage.md
 
-Dê um alô :)
-paulo[at]paulogpd.com.br
+# Gerar relatório em HTML
+docs-cli report_html --input_file evaluation_results.json --output_file coverage.html
+```
+
+## Arquivos Intermediários
+
+A ferramenta utiliza os seguintes arquivos intermediários por padrão:
+- `corpus_consolidated.md`: Documentos Markdown consolidados
+- `raw_docs.json`: Dados estruturados extraídos
+- `embeddings.json`: Embeddings gerados
+- `gartner_filtrado_processed.csv`: CSV processado
+- `evaluation_results.json`: Resultados da avaliação
+- `coverage_report.md`: Relatório em Markdown
+- `coverage_report.html`: Relatório em HTML
+
+## Requisitos
+
+- Python 3.8+
+- Google Gemini API Key
+- Dependências listadas em `pyproject.toml`
+
+## Contribuindo
+
+Contribuições são bem-vindas! Por favor, sinta-se à vontade para enviar um Pull Request.
+
+## Licença
+
+Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.

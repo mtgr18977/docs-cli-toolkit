@@ -5,6 +5,8 @@ import argparse
 import subprocess
 import sys
 import os
+import json
+from pathlib import Path
 
 # Nomes de arquivo padrão intermediários e finais
 DEFAULT_CORPUS_CONSOLIDATED = "corpus_consolidated.md"
@@ -14,6 +16,31 @@ DEFAULT_EVAL_RESULTS = "evaluation_results.json"
 DEFAULT_QA_PROCESSED = "gartner_filtrado_processed.csv" # Saída do limpa_csv e entrada do evaluate
 DEFAULT_MD_REPORT = "coverage_report.md"
 DEFAULT_HTML_REPORT = "coverage_report.html"
+
+# Configuração da API
+CONFIG_DIR = Path.home() / ".docs-cli"
+CONFIG_FILE = CONFIG_DIR / "config.json"
+
+def ensure_config_dir():
+    """Garante que o diretório de configuração existe."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+
+def load_config():
+    """Carrega a configuração do arquivo config.json."""
+    ensure_config_dir()
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, 'r') as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+def save_config(config):
+    """Salva a configuração no arquivo config.json."""
+    ensure_config_dir()
+    with open(CONFIG_FILE, 'w') as f:
+        json.dump(config, f, indent=4)
 
 def run_script(command_args):
     """Executa um script (entry point) como um subprocesso."""
@@ -45,7 +72,16 @@ def run_script(command_args):
 
 def main():
     parser = argparse.ArgumentParser(description="Docs Toolkit CLI - Orquestrador de scripts de processamento de documentação.")
+    
+    # Adiciona argumento global para a chave da API
+    parser.add_argument("--api", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
+    
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis", required=True)
+
+    # --- Subparser para configuração da API ---
+    parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
+    parser_api.add_argument("api_key", help="Chave da API do Google Gemini para ser salva globalmente.")
+    parser_api.add_argument("--show", action="store_true", help="Mostra a chave da API atual (parcialmente mascarada).")
 
     # --- Subparser para merge_markdown.py ---
     parser_merge = subparsers.add_parser("merge", help="Consolida arquivos Markdown de um diretório.")
@@ -123,11 +159,31 @@ def main():
 
     args = parser.parse_args()
 
+    # Carrega a configuração
+    config = load_config()
+
+    # Se o comando for 'api', lida com a configuração da API
+    if args.command == "api":
+        if args.show:
+            if "api_key" in config:
+                masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
+                print(f"Chave da API atual: {masked_key}")
+            else:
+                print("Nenhuma chave da API configurada.")
+        else:
+            config["api_key"] = args.api_key
+            save_config(config)
+            print("✅ Chave da API configurada com sucesso!")
+        return
+
+    # Usa a chave da API da configuração se não for fornecida via linha de comando
+    api_key = args.api or config.get("api_key")
+
     # Nomes dos entry points (conforme definido em setup.py)
     SCRIPT_MAP = {
         "merge": "docs-tc-merge-markdown",
         "extract": "docs-tc-extract-data",
-        "generate_embeddings": "docs-tc-generate-embeddings", # Certifique-se que 'generate_embedings.py' (com typo) tem cli_main e o entry point no setup.py usa esse nome de módulo
+        "generate_embeddings": "docs-tc-generate-embeddings",
         "clean_csv": "docs-tc-clean-csv",
         "evaluate": "docs-tc-evaluate-coverage",
         "report_md": "docs-tc-generate-report-md",
@@ -139,7 +195,10 @@ def main():
     elif args.command == "extract":
         run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file])
     elif args.command == "generate_embeddings":
-        run_script([SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file])
+        command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
+        if api_key:
+            command_args.extend(["--api-key", api_key])
+        run_script(command_args)
     elif args.command == "clean_csv":
         run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
     elif args.command == "evaluate":
@@ -174,7 +233,13 @@ def main():
         run_step_or_exit([SCRIPT_MAP["merge"], args.doc_input_dir, args.corpus_file])
         run_step_or_exit([SCRIPT_MAP["clean_csv"], args.qa_input_file, args.cleaned_qa_file])
         run_step_or_exit([SCRIPT_MAP["extract"], args.corpus_file, args.raw_docs_file])
-        run_step_or_exit([SCRIPT_MAP["generate_embeddings"], args.raw_docs_file, args.embeddings_file])
+        
+        # Adiciona a chave da API ao comando generate_embeddings se fornecida
+        generate_embeddings_args = [SCRIPT_MAP["generate_embeddings"], args.raw_docs_file, args.embeddings_file]
+        if api_key:
+            generate_embeddings_args.extend(["--api-key", api_key])
+        run_step_or_exit(generate_embeddings_args)
+        
         run_step_or_exit([
             SCRIPT_MAP["evaluate"],
             args.cleaned_qa_file,
@@ -222,7 +287,10 @@ def main():
             elif step == "generate_embeddings":
                 if not os.path.exists(current_raw_docs_file):
                      current_raw_docs_file = input(f"Arquivo Raw Docs ({current_raw_docs_file}) não encontrado. Informe o caminho correto: ")
-                run_custom_step_or_exit([SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file])
+                command_args = [SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file]
+                if api_key:
+                    command_args.extend(["--api-key", api_key])
+                run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
                 qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
                 run_custom_step_or_exit([SCRIPT_MAP["clean_csv"], qa_input_file, current_cleaned_qa_file])

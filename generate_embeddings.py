@@ -11,10 +11,6 @@ import re
 load_dotenv()
 
 # --- Configuração da API do Google Gemini ---
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("A variável de ambiente GOOGLE_API_KEY não está configurada.")
-genai.configure(api_key=GOOGLE_API_KEY) # type: ignore
 EMBEDDING_MODEL = "models/embedding-001"
 
 # Limite de caracteres para o embedding, para evitar exceder o limite de tokens da API
@@ -24,6 +20,16 @@ EMBEDDING_TEXT_MAX_LENGTH = 1024
 REQUEST_LIMIT_PER_MINUTE = 150
 request_count = 0
 last_request_time = time.time() # Inicializa com o tempo atual
+
+def configure_api(api_key=None):
+    """
+    Configura a API do Google Gemini com a chave fornecida ou da variável de ambiente.
+    """
+    global GOOGLE_API_KEY
+    GOOGLE_API_KEY = api_key or os.getenv("GOOGLE_API_KEY")
+    if not GOOGLE_API_KEY:
+        raise ValueError("A chave da API do Google Gemini não está configurada. Use --api-key ou configure GOOGLE_API_KEY no arquivo .env")
+    genai.configure(api_key=GOOGLE_API_KEY) # type: ignore
 
 def clean_text_for_embedding(text):
     """
@@ -142,11 +148,14 @@ def generate_embedding_with_retry(text_content):
                 return None 
     return None
 
-def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_path="embeddings.json"):
+def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_path="embeddings.json", api_key=None):
     """
     Lê o JSON com dados de documentos (já separados), divide cada um em chunks,
     gera embeddings para cada chunk, e salva o resultado final em um novo JSON.
     """
+    # Configura a API com a chave fornecida
+    configure_api(api_key)
+
     if not os.path.exists(input_json_path):
         print(f"Erro: O arquivo '{input_json_path}' não foi encontrado. Por favor, execute o script de extração (ex: 'extract_consolidated_md_to_raw_json.py') primeiro.")
         return False
@@ -224,8 +233,9 @@ def cli_main():
     parser = argparse.ArgumentParser(description="Gera embeddings para documentos a partir de um JSON.")
     parser.add_argument("input_json_path", help="Caminho para o arquivo JSON de entrada (ex: raw_docs.json).")
     parser.add_argument("output_json_path", help="Caminho para o arquivo JSON de saída dos embeddings (ex: embeddings.json).")
+    parser.add_argument("--api-key", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
     args = parser.parse_args()
-    success = generate_embeddings_for_docs(args.input_json_path, args.output_json_path)
+    success = generate_embeddings_for_docs(args.input_json_path, args.output_json_path, args.api_key)
     if not success:
         print("A geração de embeddings falhou.")
         sys.exit(1) # Garante que sys está importado se for usar aqui
