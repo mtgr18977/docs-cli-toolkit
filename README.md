@@ -8,11 +8,11 @@ Uma ferramenta de linha de comando para processamento e análise de documentaç�
 pip install docs-cli-toolkit
 ```
 
-## Configuração da API do Google Gemini
+## Configuração da API do Google Gemini ou DeepInfra/Maritaca
 
-A ferramenta oferece três maneiras de configurar a chave da API do Google Gemini:
+A ferramenta oferece três maneiras de configurar a chave da API do Google Gemini **ou** DeepInfra/Maritaca:
 
-1. **Configuração Global (Recomendada)**:
+1. **Configuração Global (Recomendada para Gemini):**
    ```bash
    docs-cli api "sua-chave-api"
    ```
@@ -21,15 +21,21 @@ A ferramenta oferece três maneiras de configurar a chave da API do Google Gemin
    docs-cli api --show
    ```
 
-2. **Via Linha de Comando**:
-   ```bash
-   docs-cli --api "sua-chave-api" generate_embeddings input.json output.json
-   ```
+2. **Via Linha de Comando:**
+   - Para Gemini:
+     ```bash
+     docs-cli --api "sua-chave-gemini" generate_embeddings input.json output.json
+     ```
+   - Para DeepInfra/Maritaca:
+     ```bash
+     docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave-deepinfra" input.json output.json
+     ```
 
-3. **Via Variável de Ambiente**:
+3. **Via Variável de Ambiente:**
    Crie um arquivo `.env` no diretório do projeto:
    ```
-   GOOGLE_API_KEY=sua-chave-api
+   GOOGLE_API_KEY=sua-chave-gemini
+   DEEPINFRA_API_KEY=sua-chave-deepinfra
    ```
 
 ## Comandos Disponíveis
@@ -49,7 +55,11 @@ docs-cli extract [--input_file arquivo_entrada.md] [--output_file arquivo_saída
 ### 3. Geração de Embeddings
 Gera embeddings para os documentos processados:
 ```bash
+# Usando Gemini (padrão)
 docs-cli generate_embeddings [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
+
+# Usando DeepInfra/Maritaca
+docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave" [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
 ```
 
 ### 4. Limpeza de CSV

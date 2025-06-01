@@ -6,6 +6,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import time
 import re
+import requests  # Adicionado para DeepInfra
+import sys  # Garantir importação para uso em cli_main()
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -148,13 +150,32 @@ def generate_embedding_with_retry(text_content):
                 return None 
     return None
 
-def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_path="embeddings.json", api_key=None):
+def generate_embedding_deepinfra(texts, api_key):
+    """
+    Gera embeddings usando a API da DeepInfra/Maritaca para uma lista de textos.
+    """
+    url = "https://api.deepinfra.com/v1/inference/intfloat/multilingual-e5-large"
+    headers = {"Authorization": f"bearer {api_key}"}
+    payload = {"inputs": texts}
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_code == 200:
+        data = response.json()
+        return data["embeddings"]
+    else:
+        print(f"Erro DeepInfra: {response.status_code} {response.text}")
+        return [None] * len(texts)
+
+def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_path="embeddings.json", api_key=None, provider="gemini", deepinfra_api_key=None):
     """
     Lê o JSON com dados de documentos (já separados), divide cada um em chunks,
     gera embeddings para cada chunk, e salva o resultado final em um novo JSON.
+    Suporta Gemini (default) e DeepInfra/Maritaca.
     """
-    # Configura a API com a chave fornecida
-    configure_api(api_key)
+    if provider.lower() in ["deepinfra", "maritaca"]:
+        if not deepinfra_api_key:
+            raise ValueError("A chave da API DeepInfra/Maritaca não está configurada. Use --deepinfra-api-key ou configure no .env")
+    else:
+        configure_api(api_key)
 
     if not os.path.exists(input_json_path):
         print(f"Erro: O arquivo '{input_json_path}' não foi encontrado. Por favor, execute o script de extração (ex: 'extract_consolidated_md_to_raw_json.py') primeiro.")
@@ -177,43 +198,49 @@ def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_pa
     
     for i, doc_data in enumerate(raw_docs):
         doc_title = doc_data.get("title", "Título Desconhecido")
-        doc_content_full = doc_data.get("content", "") 
+        doc_content_full = doc_data.get("content", "")
         file_path_relative = doc_data.get("filepath", "N/A")
-        doc_slug = doc_data.get("slug", "") # MODIFICADO: Obtém o slug
+        doc_slug = doc_data.get("slug", "")
 
         print(f"\n--- Processando documento {i + 1}/{total_raw_docs}: '{doc_title}' ({file_path_relative}) ---")
-        
-        # MODIFICADO: Passa o doc_slug para a função de chunking
-        chunks_for_doc = split_content_into_semantic_chunks(doc_content_full, doc_title, file_path_relative, doc_slug) 
-        
+        chunks_for_doc = split_content_into_semantic_chunks(doc_content_full, doc_title, file_path_relative, doc_slug)
         if not chunks_for_doc:
             print(f"Atenção: Nenhum chunk válido gerado para o documento '{doc_title}'. Pulando.")
-            continue 
+            continue
 
+        # Prepara textos para embedding
+        embedding_texts = []
         for chunk_idx, chunk in enumerate(chunks_for_doc):
             embedding_text_raw = f"Documento: {chunk['document_title']}. Seção: {chunk['chunk_title']}. Conteúdo: {chunk['chunk_content']}"
             embedding_text = clean_text_for_embedding(embedding_text_raw)
-            
             if len(embedding_text) > EMBEDDING_TEXT_MAX_LENGTH:
                 embedding_text = embedding_text[:EMBEDDING_TEXT_MAX_LENGTH]
                 print(f"  Truncando chunk {chunk_idx+1} de '{chunk['chunk_title']}' para {EMBEDDING_TEXT_MAX_LENGTH} caracteres para embedding.")
-            
-            if not embedding_text.strip():
-                print(f"  Atenção: Texto limpo para embedding vazio para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Pulando embedding.")
-                chunk["embedding"] = None
-                all_processed_chunks.append(chunk)
-                continue
+            embedding_texts.append(embedding_text)
 
-            print(f"  Gerando embedding para chunk {chunk_idx+1} de '{chunk['chunk_title']}'...")
-            chunk_embedding = generate_embedding_with_retry(embedding_text)
-
-            if chunk_embedding is not None:
-                chunk["embedding"] = chunk_embedding
+        # Gera embeddings em lote para DeepInfra, ou um a um para Gemini
+        if provider.lower() in ["deepinfra", "maritaca"]:
+            embeddings = generate_embedding_deepinfra(embedding_texts, deepinfra_api_key)
+            for chunk, embedding in zip(chunks_for_doc, embeddings):
+                chunk["embedding"] = embedding
                 all_processed_chunks.append(chunk)
-            else:
-                print(f"  Atenção: Falha ao gerar embedding para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Chunk será incluído sem embedding.")
-                chunk["embedding"] = None
-                all_processed_chunks.append(chunk)
+        else:
+            for chunk_idx, chunk in enumerate(chunks_for_doc):
+                embedding_text = embedding_texts[chunk_idx]
+                if not embedding_text.strip():
+                    print(f"  Atenção: Texto limpo para embedding vazio para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Pulando embedding.")
+                    chunk["embedding"] = None
+                    all_processed_chunks.append(chunk)
+                    continue
+                print(f"  Gerando embedding para chunk {chunk_idx+1} de '{chunk['chunk_title']}'...")
+                chunk_embedding = generate_embedding_with_retry(embedding_text)
+                if chunk_embedding is not None:
+                    chunk["embedding"] = chunk_embedding
+                    all_processed_chunks.append(chunk)
+                else:
+                    print(f"  Atenção: Falha ao gerar embedding para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Chunk será incluído sem embedding.")
+                    chunk["embedding"] = None
+                    all_processed_chunks.append(chunk)
 
     if not all_processed_chunks:
         print("Nenhum chunk processado com sucesso (sem embeddings ou dados de entrada).")
@@ -234,14 +261,15 @@ def cli_main():
     parser.add_argument("input_json_path", help="Caminho para o arquivo JSON de entrada (ex: raw_docs.json).")
     parser.add_argument("output_json_path", help="Caminho para o arquivo JSON de saída dos embeddings (ex: embeddings.json).")
     parser.add_argument("--api-key", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
+    parser.add_argument("--provider", choices=["gemini", "deepinfra", "maritaca"], default="gemini", help="Provedor de embeddings: gemini (padrão), deepinfra ou maritaca.")
+    parser.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)")
     args = parser.parse_args()
-    success = generate_embeddings_for_docs(args.input_json_path, args.output_json_path, args.api_key)
+    success = generate_embeddings_for_docs(args.input_json_path, args.output_json_path, args.api_key, args.provider, args.deepinfra_api_key)
     if not success:
         print("A geração de embeddings falhou.")
-        sys.exit(1) # Garante que sys está importado se for usar aqui
+        sys.exit(1)
     else:
         print("Geração de embeddings concluída com sucesso.")
 
 if __name__ == "__main__":
-    import sys # Adicionado aqui para garantir que está disponível para cli_main
     cli_main()

@@ -102,6 +102,9 @@ def main():
                                  help=f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
     parser_generate.add_argument("--output_file", default=DEFAULT_EMBEDDINGS,
                                  help=f"Arquivo JSON de saída para os embeddings (padrão: {DEFAULT_EMBEDDINGS}).")
+    parser_generate.add_argument("--provider", choices=["gemini", "deepinfra", "maritaca"], default="gemini",
+                                 help="Provedor de embeddings: gemini (padrão), deepinfra ou maritaca.")
+    parser_generate.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)")
 
     # --- Subparser para limpa_csv.py ---
     parser_clean_csv = subparsers.add_parser("clean_csv", help="Limpa o arquivo CSV de Perguntas e Respostas.")
@@ -198,6 +201,10 @@ def main():
         command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
         if api_key:
             command_args.extend(["--api-key", api_key])
+        if hasattr(args, "provider") and args.provider:
+            command_args.extend(["--provider", args.provider])
+        if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
+            command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
         run_script(command_args)
     elif args.command == "clean_csv":
         run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
@@ -290,6 +297,10 @@ def main():
                 command_args = [SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file]
                 if api_key:
                     command_args.extend(["--api-key", api_key])
+                if hasattr(args, "provider") and args.provider:
+                    command_args.extend(["--provider", args.provider])
+                if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
+                    command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
                 run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
                 qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
