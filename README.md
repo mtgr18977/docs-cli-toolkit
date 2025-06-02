@@ -156,7 +156,7 @@ A ferramenta utiliza os seguintes arquivos intermediários por padrão:
 - `corpus_consolidated.md`: Documentos Markdown consolidados
 - `raw_docs.json`: Dados estruturados extraídos
 - `embeddings.json`: Embeddings gerados
-- `gartner_filtrado_processed.csv`: CSV processado
+- `qa_data_clean.csv`: CSV processado
 - `evaluation_results.json`: Resultados da avaliação
 - `coverage_report.md`: Relatório em Markdown
 - `coverage_report.html`: Relatório em HTML
