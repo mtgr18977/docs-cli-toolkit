@@ -1,20 +1,18 @@
-# pyproject.toml (VERSÃO REVISADA E CENTRALIZADA)
-
 [build-system]
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 # backend-path não é necessário se setuptools é puxado como dependência
 
 [project]
-name = "docs-cli"
-version = "0.1.1"
+name = "docs-cli-toolkit"
+version = "0.1.2"
 authors = [
-  { name="Paulo Guilherme Pilott", email="seuemail@example.com" },
+  { name="Paulo Guilherme Pilott", email="paulo@paulogpd.com.br" },
 ]
-description = "Um toolkit para processamento e avaliação de documentação."
+description = "Um toolkit para processamento e avaliação de documentação, com suporte a geração de embeddings usando a API do Google Gemini."
 readme = "README.md"
-requires-python = ">=3.8" # Definido aqui
-license = "MIT"
+requires-python = ">=3.8"
+license = { text = "MIT" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
@@ -23,13 +21,18 @@ classifiers = [
     "Topic :: Documentation",
     "Topic :: Utilities",
     "Environment :: Console",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 
-dependencies = [ # Equivalente a install_requires
-    "google-generativeai",
-    "python-dotenv",
-    "numpy",
-    "pandas"
+dependencies = [
+    "google-generativeai>=0.3.0",
+    "python-dotenv>=1.0.0",
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "requests>=2.31.0"
 ]
 
 # Definindo TODOS os scripts de console aqui
@@ -37,8 +40,13 @@ dependencies = [ # Equivalente a install_requires
 docs-cli = "docs_tc:main"
 docs-tc-merge-markdown = "merge_markdown:cli_main"
 docs-tc-extract-data = "extract_data_from_markdown:cli_main"
-docs-tc-generate-embeddings = "generate_embeddings:cli_main" # Corrigido o nome do módulo
+docs-tc-generate-embeddings = "generate_embeddings:cli_main"
 docs-tc-clean-csv = "limpa_csv:cli_main"
 docs-tc-evaluate-coverage = "evaluate_coverage:cli_main"
 docs-tc-generate-report-md = "generate_report:cli_main"
 docs-tc-generate-report-html = "generate_report_html:cli_main"
+
+[project.urls]
+Homepage = "https://github.com/seu-usuario/docs-cli-toolkit"
+Repository = "https://github.com/seu-usuario/docs-cli-toolkit.git"
+Issues = "https://github.com/seu-usuario/docs-cli-toolkit/issues"

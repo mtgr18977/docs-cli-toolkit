@@ -138,3 +138,7 @@ cython_debug/
 
 # VSCode
 .vscode/
+
+# PyPI
+.pypirc
+
