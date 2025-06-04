@@ -4,22 +4,13 @@ import json
 import csv
 import os
 import google.generativeai as genai
-from dotenv import load_dotenv
 import time
 import numpy as np # Para cálculo de similaridade de cosseno
 import re # Para manipulação de texto e divisão de frases
-import argparse # Adicionado para parsing de argumentos CLI
-import sys # Adicionado para sys.exit
+import argparse  # Adicionado para parsing de argumentos CLI
+import sys  # Adicionado para sys.exit
 
-# Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
-
-# --- Configuração da API do Google Gemini (igual ao generate_embeddings.py) ---
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("A variável de ambiente GOOGLE_API_KEY não está configurada.")
-# genai.configure(api_key=GOOGLE_API_KEY)  # Removido porque não existe em google.generativeai
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY  # Garante que a variável de ambiente está definida
+# --- Configuração da API do Google Gemini ---
 EMBEDDING_MODEL = "models/embedding-001"
 
 # Limite de caracteres para o embedding, para evitar exceder o limite de tokens da API
@@ -144,10 +135,13 @@ def get_relevant_chunks(query_embedding, processed_chunks, top_k=5):
     return similarities[:top_k]
 
 # MODIFICADO: Adicionado output_json_path como parâmetro
-def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
-                      chunks_filepath="processed_chunks_with_embeddings.json",
-                      top_k_chunks=5,
-                      output_json_path="evaluation_results.json"): # MODIFICADO: parâmetro para nome do arquivo de saída
+def evaluate_coverage(
+    qa_filepath="gartner_filtrado_processed.csv",
+    chunks_filepath="processed_chunks_with_embeddings.json",
+    top_k_chunks=5,
+    output_json_path="evaluation_results.json",
+    gemini_api_key=None,
+):
     """
     Avalia a cobertura da documentação usando um arquivo CSV de perguntas e respostas ideais.
     A avaliação considera a similaridade de frases da resposta ideal com os chunks relevantes.
@@ -159,6 +153,14 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
     if not os.path.exists(chunks_filepath):
         print(f"Erro: O arquivo de chunks processados '{chunks_filepath}' não foi encontrado. Execute 'generate_embeddings.py' primeiro.")
         return False
+
+    api_key = gemini_api_key or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "A chave da API do Google Gemini não está configurada. "
+            "Passe via argumento ou defina GOOGLE_API_KEY."
+        )
+    genai.configure(api_key=api_key)  # type: ignore
 
     print(f"Carregando chunks de '{chunks_filepath}'...")
     try:
@@ -344,13 +346,15 @@ def cli_main():
     parser.add_argument("embeddings_filepath", help="Caminho para o arquivo JSON de chunks processados com embeddings.")
     parser.add_argument("-k", "--top_k_chunks", type=int, default=5, help="Número de chunks mais relevantes a considerar (padrão: 5).")
     parser.add_argument("-o", "--output", default="evaluation_results.json", help="Arquivo de saída para os resultados da avaliação (padrão: evaluation_results.json).")
+    parser.add_argument("--gemini-api-key", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY)")
     args = parser.parse_args()
 
     success = evaluate_coverage(
         qa_filepath=args.qa_filepath,
         chunks_filepath=args.embeddings_filepath,
         top_k_chunks=args.top_k_chunks,
-        output_json_path=args.output
+        output_json_path=args.output,
+        gemini_api_key=args.gemini_api_key,
     )
     if not success:
         print("\nA avaliação de cobertura da documentação falhou.")

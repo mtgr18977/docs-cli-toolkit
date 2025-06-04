@@ -247,13 +247,18 @@ def main():
     elif args.command == "clean_csv":
         run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
     elif args.command == "evaluate":
-        run_script([
+        command_args = [
             SCRIPT_MAP["evaluate"],
             args.qa_file,
             args.embeddings_file,
-            "-k", str(args.top_k),
-            "-o", args.output
-        ])
+            "-k",
+            str(args.top_k),
+            "-o",
+            args.output,
+        ]
+        if api_key:
+            command_args.extend(["--gemini-api-key", api_key])
+        run_script(command_args)
     elif args.command == "report_md":
         run_script([
             SCRIPT_MAP["report_md"],
@@ -284,14 +289,19 @@ def main():
         if api_key:
             generate_embeddings_args.extend(["--gemini-api-key", api_key])
         run_step_or_exit(generate_embeddings_args)
-        
-        run_step_or_exit([
+
+        evaluate_args = [
             SCRIPT_MAP["evaluate"],
             args.cleaned_qa_file,
             args.embeddings_file,
-            "-k", str(args.eval_top_k),
-            "-o", args.eval_results_file
-        ])
+            "-k",
+            str(args.eval_top_k),
+            "-o",
+            args.eval_results_file,
+        ]
+        if api_key:
+            evaluate_args.extend(["--gemini-api-key", api_key])
+        run_step_or_exit(evaluate_args)
         run_step_or_exit([
             SCRIPT_MAP["report_md"],
             args.eval_results_file,
@@ -369,12 +379,18 @@ def main():
                 if not os.path.exists(current_embeddings_file):
                      current_embeddings_file = input(f"Arquivo de Embeddings ({current_embeddings_file}) não encontrado. Informe o caminho correto: ")
                 eval_k_str = input(f"Informe o top_k para evaluate (pressione Enter para usar {default_eval_top_k}): ") or str(default_eval_top_k)
-                run_custom_step_or_exit([
+                eval_args = [
                     SCRIPT_MAP["evaluate"],
-                    current_cleaned_qa_file, current_embeddings_file,
-                    "-k", eval_k_str,
-                    "-o", current_eval_results_file
-                ])
+                    current_cleaned_qa_file,
+                    current_embeddings_file,
+                    "-k",
+                    eval_k_str,
+                    "-o",
+                    current_eval_results_file,
+                ]
+                if api_key:
+                    eval_args.extend(["--gemini-api-key", api_key])
+                run_custom_step_or_exit(eval_args)
             elif step == "report_md":
                  if not os.path.exists(current_eval_results_file):
                      current_eval_results_file = input(f"Arquivo de Resultados da Avaliação ({current_eval_results_file}) não encontrado. Informe o caminho correto: ")

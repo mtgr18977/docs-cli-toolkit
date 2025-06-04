@@ -4,14 +4,10 @@ import json
 import os
 import google.generativeai as genai
 import openai
-from dotenv import load_dotenv
 import time
 import re
 import requests  # Adicionado para DeepInfra
 import sys  # Garantir importação para uso em cli_main()
-
-# Carrega as variáveis de ambiente do arquivo .env
-load_dotenv()
 
 # --- Configuração de Modelos de Embedding para cada Provedor ---
 GEMINI_EMBEDDING_MODEL = "models/embedding-001"  # Modelo do Gemini
@@ -29,14 +25,14 @@ gemini_request_count = 0
 gemini_last_request_time = time.time()
 
 def configure_api(api_key=None):
-    """
-    Configura a API do Google Gemini com a chave fornecida ou da variável de ambiente.
-    """
-    global GOOGLE_API_KEY
-    GOOGLE_API_KEY = api_key or os.getenv("GOOGLE_API_KEY")
-    if not GOOGLE_API_KEY:
-        raise ValueError("A chave da API do Google Gemini não está configurada. Use --api-key ou configure GOOGLE_API_KEY no arquivo .env")
-    genai.configure(api_key=GOOGLE_API_KEY) # type: ignore
+    """Configura o Google Gemini usando a chave fornecida ou a variável de ambiente."""
+    key = api_key or os.getenv("GOOGLE_API_KEY")
+    if not key:
+        raise ValueError(
+            "A chave da API do Google Gemini não está configurada. "
+            "Passe via argumento ou defina GOOGLE_API_KEY."
+        )
+    genai.configure(api_key=key)  # type: ignore
 
 def clean_text_for_embedding(text):
     """
