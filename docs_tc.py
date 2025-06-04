@@ -80,8 +80,18 @@ def main():
 
     # --- Subparser para configuração da API ---
     parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
-    parser_api.add_argument("api_key", help="Chave da API do Google Gemini para ser salva globalmente.")
-    parser_api.add_argument("--show", action="store_true", help="Mostra a chave da API atual (parcialmente mascarada).")
+    # Torna o argumento da chave opcional para permitir 'docs-cli api --show'
+    parser_api.add_argument(
+        "api_key",
+        nargs="?",
+        default=None,
+        help="Chave da API do Google Gemini para ser salva globalmente."
+    )
+    parser_api.add_argument(
+        "--show",
+        action="store_true",
+        help="Mostra a chave da API atual (parcialmente mascarada)."
+    )
 
     # --- Subparser para merge_markdown.py ---
     parser_merge = subparsers.add_parser("merge", help="Consolida arquivos Markdown de um diretório.")
@@ -185,10 +195,13 @@ def main():
                 print(f"Chave da API atual: {masked_key}")
             else:
                 print("Nenhuma chave da API configurada.")
-        else:
+        elif args.api_key:
             config["api_key"] = args.api_key
             save_config(config)
             print("✅ Chave da API configurada com sucesso!")
+        else:
+            print("É necessário fornecer a chave da API ou usar --show para exibir a chave atual.")
+            parser_api.print_help()
         return
 
     # Usa a chave da API da configuração se não for fornecida via linha de comando

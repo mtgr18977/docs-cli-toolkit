@@ -76,12 +76,15 @@ def generate_md_report(evaluation_json_path="evaluation_results.json", output_md
         md_content += f"#### Top {top_k_chunks} Chunks Relevantes para a Pergunta:\n\n"
         if item.get('top_k_chunks_relevantes'):
             for chunk in item['top_k_chunks_relevantes']:
-                md_content += f"""* **Documento:** {chunk['document_title']}
+                preview = chunk['content_preview'].replace('`', '\\`')
+                md_content += (
+                    f"""* **Documento:** {chunk['document_title']}
     * **Seção:** {chunk['chunk_title']}
     * **Caminho do Arquivo:** `{chunk['filepath']}`
     * **Similaridade com a Pergunta:** {chunk['similarity_to_query']}
-    * **Conteúdo (preview):** `{chunk['content_preview'].replace('`', '\\`')}`
+    * **Conteúdo (preview):** `{preview}`
 """
+                )
             md_content += "\n" # Adiciona uma linha em branco para espaçamento
         else:
             md_content += "* Nenhum chunk relevante encontrado.\n\n"
