@@ -42,22 +42,31 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
 
-def run_script(command_args):
+def run_script(command_args, verbose=False):
     """Executa um script (entry point) como um subprocesso."""
     # Espera que command_args[0] seja um executável no PATH (ex: 'docs-tc-extract-data')
     command = command_args
     print(f"🚀 Executando: {' '.join(command)}")
     try:
-        process = subprocess.run(command, capture_output=True, text=True, encoding=sys.stdout.encoding or 'latin-1', errors='replace')
+        process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
 
-        if process.stdout:
+        if verbose and process.stdout:
             print("Output:\n", process.stdout)
         if process.stderr:
             print("Errors:\n", process.stderr, file=sys.stderr)
 
         if process.returncode != 0:
-            print(f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}", file=sys.stderr)
-            return None # Indica falha para as funções run_step_or_exit
+            print(
+                f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}",
+                file=sys.stderr,
+            )
+            return None  # Indica falha para as funções run_step_or_exit
 
         print(f"✅ Script {' '.join(command_args)} concluído com sucesso.")
         return process
@@ -74,7 +83,15 @@ def main():
     parser = argparse.ArgumentParser(description="Docs Toolkit CLI - Orquestrador de scripts de processamento de documentação.")
     
     # Adiciona argumento global para a chave da API
-    parser.add_argument("--api", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
+    parser.add_argument(
+        "--api",
+        help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Exibe a saída completa dos scripts chamados",
+    )
     
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis", required=True)
 
@@ -230,9 +247,9 @@ def main():
     }
 
     if args.command == "merge":
-        run_script([SCRIPT_MAP["merge"], args.input_dir, args.output_file])
+        run_script([SCRIPT_MAP["merge"], args.input_dir, args.output_file], verbose=args.verbose)
     elif args.command == "extract":
-        run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file])
+        run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file], verbose=args.verbose)
     elif args.command == "generate_embeddings":
         command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
         if api_key:
@@ -243,35 +260,37 @@ def main():
             command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
         if hasattr(args, "openai_api_key") and args.openai_api_key:
             command_args.extend(["--openai-api-key", args.openai_api_key])
-        run_script(command_args)
+        run_script(command_args, verbose=args.verbose)
     elif args.command == "clean_csv":
-        run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
+        run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file], verbose=args.verbose)
     elif args.command == "evaluate":
         run_script([
             SCRIPT_MAP["evaluate"],
             args.qa_file,
             args.embeddings_file,
-            "-k", str(args.top_k),
-            "-o", args.output
-        ])
+            "-k",
+            str(args.top_k),
+            "-o",
+            args.output,
+        ], verbose=args.verbose)
     elif args.command == "report_md":
         run_script([
             SCRIPT_MAP["report_md"],
             args.input_file,
             args.output_file,
-            str(args.top_k_chunks)
-        ])
+            str(args.top_k_chunks),
+        ], verbose=args.verbose)
     elif args.command == "report_html":
         run_script([
             SCRIPT_MAP["report_html"],
             args.input_file,
             args.output_file,
-            str(args.top_k_chunks)
-        ])
+            str(args.top_k_chunks),
+        ], verbose=args.verbose)
     elif args.command == "full_flow":
         print("🚀 Iniciando fluxo completo...")
         def run_step_or_exit(step_command_args):
-            if run_script(step_command_args) is None:
+            if run_script(step_command_args, verbose=args.verbose) is None:
                 print(f"❌ Etapa {step_command_args[0]} falhou. Abortando fluxo completo.")
                 sys.exit(1)
 
@@ -316,7 +335,7 @@ def main():
         default_eval_top_k = 5
 
         def run_custom_step_or_exit(step_command_args):
-            if run_script(step_command_args) is None:
+            if run_script(step_command_args, verbose=args.verbose) is None:
                 print(f"❌ Etapa {step_command_args[0]} falhou. Abortando fluxo customizado.")
                 sys.exit(1)
 
