@@ -10,11 +10,16 @@ import re
 import requests  # Adicionado para DeepInfra
 import sys  # Garantir importação para uso em cli_main()
 
+from utils import (
+    clean_text_for_embedding,
+    generate_embedding_with_retry,
+    GEMINI_EMBEDDING_MODEL,
+)
+
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
 # --- Configuração de Modelos de Embedding para cada Provedor ---
-GEMINI_EMBEDDING_MODEL = "models/embedding-001"  # Modelo do Gemini
 OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"  # Modelo do OpenAI
 
 # Limite de tokens/caracteres (ajuste conforme o provedor e modelo)
@@ -23,10 +28,6 @@ OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"  # Modelo do OpenAI
 EMBEDDING_TEXT_MAX_LENGTH_OPENAI = 8000
 EMBEDDING_TEXT_MAX_LENGTH_GEMINI = 10000
 
-# --- Variáveis para controle de Rate Limiting (aplicado ao Gemini) ---
-REQUEST_LIMIT_PER_MINUTE_GEMINI = 150
-gemini_request_count = 0
-gemini_last_request_time = time.time()
 
 def configure_api(api_key=None):
     """
@@ -38,31 +39,6 @@ def configure_api(api_key=None):
         raise ValueError("A chave da API do Google Gemini não está configurada. Use --api-key ou configure GOOGLE_API_KEY no arquivo .env")
     genai.configure(api_key=GOOGLE_API_KEY) # type: ignore
 
-def clean_text_for_embedding(text):
-    """
-    Remove caracteres especiais e formatação markdown para texto que será EMBEDDADO.
-    Esta função foi aprimorada para lidar com mais casos de Markdown.
-    """
-    # Remove links markdown (e.g., [texto](link))
-    text = re.sub(r'\[.*?\]\(.*?\)', '', text)
-    # Remove bold/italic (**, __, *, _)
-    text = re.sub(r'\*\*|__|\*|_', '', text)
-    # Remove cabeçalhos (#, ##, ### etc.)
-    text = re.sub(r'#+\s*', '', text)
-    # Remove blocos de código (``` ou `)
-    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL) # Para blocos multilinhas
-    text = re.sub(r'`[^`]*`', '', text) # Para blocos de uma linha
-    # Remove blockquotes (>)
-    text = re.sub(r'^\s*>\s*', '', text, flags=re.MULTILINE)
-    # Remove linhas de lista (- + *)
-    text = re.sub(r'^\s*[-+*]\s*', '', text, flags=re.MULTILINE)
-    # Remove linhas horizontais (---, ***, ___)
-    text = re.sub(r'^-{3,}|^\*{3,}|^__{3,}', '', text, flags=re.MULTILINE)
-    # Remove múltiplos espaços e quebras de linha para um único espaço
-    text = re.sub(r'\s+', ' ', text).strip() 
-    # Substitui múltiplas quebras de linha por um único espaço (se houver alguma que restou)
-    text = re.sub(r'\n+', ' ', text).strip() 
-    return text
 
 def split_content_into_semantic_chunks(document_content, doc_title, filepath, doc_slug): # MODIFICADO: adicionado doc_slug
     """
@@ -121,40 +97,6 @@ def split_content_into_semantic_chunks(document_content, doc_title, filepath, do
     return [chunk for chunk in chunks if chunk['chunk_content'].strip()]
 
 
-def generate_embedding_gemini_with_retry(text_content, api_key):
-    """
-    Gera um embedding para o conteúdo de texto, com mecanismo de retry e rate limiting.
-    """
-    global gemini_request_count, gemini_last_request_time
-
-    genai.configure(api_key=api_key)
-
-    current_time = time.time()
-    elapsed_time = current_time - gemini_last_request_time
-
-    if elapsed_time < 60 and gemini_request_count >= REQUEST_LIMIT_PER_MINUTE_GEMINI:
-        sleep_duration = 60 - elapsed_time
-        print(f"  Atingido limite de requisições por minuto. Aguardando {sleep_duration:.2f} segundos...")
-        time.sleep(sleep_duration)
-        gemini_request_count = 0
-        gemini_last_request_time = time.time()
-    elif elapsed_time >= 60:
-        gemini_request_count = 0
-        gemini_last_request_time = time.time()
-    gemini_request_count += 1
-    
-    retries = 3
-    for attempt in range(retries):
-        try:
-            response = genai.embed_content(model=GEMINI_EMBEDDING_MODEL, content=text_content)  # type: ignore
-            return response['embedding']
-        except Exception as e:
-            print(f"Erro ao gerar embedding (tentativa {attempt+1}/{retries}): {e}")
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt) 
-            else:
-                return None 
-    return None
 
 def generate_embedding_deepinfra(texts, api_key):
     """
@@ -279,8 +221,10 @@ def generate_embeddings_for_docs(
                     print(
                         f"  Gerando embedding (Gemini) para chunk {chunk_idx+1} de '{chunk['chunk_title']}'..."
                     )
-                    chunk_embedding = generate_embedding_gemini_with_retry(
-                        embedding_text_cleaned, actual_gemini_api_key
+                    chunk_embedding = generate_embedding_with_retry(
+                        embedding_text_cleaned,
+                        actual_gemini_api_key,
+                        model=GEMINI_EMBEDDING_MODEL,
                     )
                     if chunk_embedding is not None:
                         chunk["embedding"] = chunk_embedding
