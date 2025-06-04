@@ -96,6 +96,14 @@ def main():
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis", required=True)
 
     # --- Subparser para configuração da API ---
+codex/make-api_key-optional-in-docs_tc.py
+    parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
+    parser_api.add_argument(
+        "api_key",
+        nargs="?",
+        help="Chave da API do Google Gemini para ser salva globalmente.",
+    )
+    parser_api.add_argument("--show", action="store_true", help="Mostra a chave da API atual (parcialmente mascarada).")
     parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
     # Torna o argumento da chave opcional para permitir 'docs-cli api --show'
     parser_api.add_argument(
@@ -109,6 +117,7 @@ def main():
         action="store_true",
         help="Mostra a chave da API atual (parcialmente mascarada)."
     )
+main
 
     # --- Subparser para merge_markdown.py ---
     parser_merge = subparsers.add_parser("merge", help="Consolida arquivos Markdown de um diretório.")
@@ -217,12 +226,26 @@ def main():
 
     # Se o comando for 'api', lida com a configuração da API
     if args.command == "api":
+codex/make-api_key-optional-in-docs_tc.py
+        if args.api_key:
+            config["api_key"] = args.api_key
+            save_config(config)
+            print("✅ Chave da API configurada com sucesso!")
+            if args.show:
+                masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
+                print(f"Chave da API atual: {masked_key}")
+        elif args.show:
         if args.show:
+main
             if "api_key" in config:
                 masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
                 print(f"Chave da API atual: {masked_key}")
             else:
                 print("Nenhuma chave da API configurada.")
+codex/make-api_key-optional-in-docs_tc.py
+        else:
+            print("Informe uma chave da API ou use --show para visualizar a atual.")
+
         elif args.api_key:
             config["api_key"] = args.api_key
             save_config(config)
@@ -230,6 +253,7 @@ def main():
         else:
             print("É necessário fornecer a chave da API ou usar --show para exibir a chave atual.")
             parser_api.print_help()
+main
         return
 
     # Usa a chave da API da configuração se não for fornecida via linha de comando

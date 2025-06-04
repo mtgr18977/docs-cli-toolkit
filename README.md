@@ -16,7 +16,7 @@ A ferramenta oferece três maneiras de configurar as chaves das APIs do Google G
    ```bash
    docs-cli api "sua-chave-api"
    ```
-   Para verificar a chave configurada (parcialmente mascarada):
+   Para verificar a chave configurada (parcialmente mascarada) sem fornecer uma nova chave:
    ```bash
    docs-cli api --show
    ```
