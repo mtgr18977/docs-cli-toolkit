@@ -3,6 +3,7 @@
 import json
 import os
 import google.generativeai as genai
+import openai
 from dotenv import load_dotenv
 import time
 import re
@@ -12,16 +13,20 @@ import sys  # Garantir importação para uso em cli_main()
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-# --- Configuração da API do Google Gemini ---
-EMBEDDING_MODEL = "models/embedding-001"
+# --- Configuração de Modelos de Embedding para cada Provedor ---
+GEMINI_EMBEDDING_MODEL = "models/embedding-001"  # Modelo do Gemini
+OPENAI_EMBEDDING_MODEL = "text-embedding-ada-002"  # Modelo do OpenAI
 
-# Limite de caracteres para o embedding, para evitar exceder o limite de tokens da API
-EMBEDDING_TEXT_MAX_LENGTH = 1024 
+# Limite de tokens/caracteres (ajuste conforme o provedor e modelo)
+# OpenAI 'text-embedding-ada-002' tem um contexto de 8191 tokens.
+# Gemini 'embedding-001' tem um limite de 2048 tokens por pedido.
+EMBEDDING_TEXT_MAX_LENGTH_OPENAI = 8000
+EMBEDDING_TEXT_MAX_LENGTH_GEMINI = 10000
 
-# --- Variáveis para controle de Rate Limiting ---
-REQUEST_LIMIT_PER_MINUTE = 150
-request_count = 0
-last_request_time = time.time() # Inicializa com o tempo atual
+# --- Variáveis para controle de Rate Limiting (aplicado ao Gemini) ---
+REQUEST_LIMIT_PER_MINUTE_GEMINI = 150
+gemini_request_count = 0
+gemini_last_request_time = time.time()
 
 def configure_api(api_key=None):
     """
@@ -116,32 +121,33 @@ def split_content_into_semantic_chunks(document_content, doc_title, filepath, do
     return [chunk for chunk in chunks if chunk['chunk_content'].strip()]
 
 
-def generate_embedding_with_retry(text_content):
+def generate_embedding_gemini_with_retry(text_content, api_key):
     """
     Gera um embedding para o conteúdo de texto, com mecanismo de retry e rate limiting.
     """
-    global request_count, last_request_time
+    global gemini_request_count, gemini_last_request_time
+
+    genai.configure(api_key=api_key)
 
     current_time = time.time()
-    elapsed_time = current_time - last_request_time
+    elapsed_time = current_time - gemini_last_request_time
 
-    if elapsed_time < 60 and request_count >= REQUEST_LIMIT_PER_MINUTE:
+    if elapsed_time < 60 and gemini_request_count >= REQUEST_LIMIT_PER_MINUTE_GEMINI:
         sleep_duration = 60 - elapsed_time
         print(f"  Atingido limite de requisições por minuto. Aguardando {sleep_duration:.2f} segundos...")
         time.sleep(sleep_duration)
-        request_count = 0
-        last_request_time = time.time()
-    elif elapsed_time >= 60: 
-        request_count = 0
-        last_request_time = time.time()
-    
-    request_count += 1
+        gemini_request_count = 0
+        gemini_last_request_time = time.time()
+    elif elapsed_time >= 60:
+        gemini_request_count = 0
+        gemini_last_request_time = time.time()
+    gemini_request_count += 1
     
     retries = 3
     for attempt in range(retries):
         try:
-            response = genai.embed_content(model=EMBEDDING_MODEL, content=[text_content]) # type: ignore
-            return response['embedding'][0] 
+            response = genai.embed_content(model=GEMINI_EMBEDDING_MODEL, content=text_content)  # type: ignore
+            return response['embedding']
         except Exception as e:
             print(f"Erro ao gerar embedding (tentativa {attempt+1}/{retries}): {e}")
             if attempt < retries - 1:
@@ -165,17 +171,56 @@ def generate_embedding_deepinfra(texts, api_key):
         print(f"Erro DeepInfra: {response.status_code} {response.text}")
         return [None] * len(texts)
 
-def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_path="embeddings.json", api_key=None, provider="gemini", deepinfra_api_key=None):
+def generate_embedding_openai(texts_batch, openai_api_key_to_use):
+    """Gera embeddings usando a API da OpenAI para uma lista de textos."""
+    client = openai.OpenAI(api_key=openai_api_key_to_use)
+    embeddings_list = []
+    try:
+        response = client.embeddings.create(
+            input=texts_batch,
+            model=OPENAI_EMBEDDING_MODEL,
+        )
+        embeddings_list = [item.embedding for item in response.data]
+        return embeddings_list
+    except openai.APIError as e:
+        print(f"Erro OpenAI API: {e}")
+        return [None] * len(texts_batch)
+    except Exception as e:
+        print(f"Erro inesperado ao gerar embeddings com OpenAI: {e}")
+        return [None] * len(texts_batch)
+
+def generate_embeddings_for_docs(
+    input_json_path="raw_docs.json",
+    output_json_path="embeddings.json",
+    gemini_api_key_param=None,
+    provider="gemini",
+    deepinfra_api_key_param=None,
+    openai_api_key_param=None,
+):
     """
     Lê o JSON com dados de documentos (já separados), divide cada um em chunks,
     gera embeddings para cada chunk, e salva o resultado final em um novo JSON.
-    Suporta Gemini (default) e DeepInfra/Maritaca.
+    Suporta Gemini, DeepInfra/Maritaca e OpenAI.
     """
-    if provider.lower() in ["deepinfra", "maritaca"]:
-        if not deepinfra_api_key:
-            raise ValueError("A chave da API DeepInfra/Maritaca não está configurada. Use --deepinfra-api-key ou configure no .env")
+    actual_gemini_api_key = gemini_api_key_param or os.getenv("GOOGLE_API_KEY")
+    actual_openai_api_key = openai_api_key_param or os.getenv("OPENAI_API_KEY")
+    actual_deepinfra_api_key = deepinfra_api_key_param or os.getenv("DEEPINFRA_API_KEY")
+
+    if provider.lower() == "gemini" and not actual_gemini_api_key:
+        raise ValueError(
+            "API Key do Gemini não encontrada. Configure GOOGLE_API_KEY no .env ou use --gemini-api-key."
+        )
+    elif provider.lower() == "openai" and not actual_openai_api_key:
+        raise ValueError(
+            "API Key da OpenAI não encontrada. Configure OPENAI_API_KEY no .env ou use --openai-api-key."
+        )
+    elif provider.lower() in ["deepinfra", "maritaca"] and not actual_deepinfra_api_key:
+        raise ValueError(
+            "API Key da DeepInfra não encontrada. Configure DEEPINFRA_API_KEY no .env ou use --deepinfra-api-key."
+        )
     else:
-        configure_api(api_key)
+        if provider.lower() == "gemini":
+            configure_api(actual_gemini_api_key)
 
     if not os.path.exists(input_json_path):
         print(f"Erro: O arquivo '{input_json_path}' não foi encontrado. Por favor, execute o script de extração (ex: 'extract_consolidated_md_to_raw_json.py') primeiro.")
@@ -208,39 +253,59 @@ def generate_embeddings_for_docs(input_json_path="raw_docs.json", output_json_pa
             print(f"Atenção: Nenhum chunk válido gerado para o documento '{doc_title}'. Pulando.")
             continue
 
-        # Prepara textos para embedding
-        embedding_texts = []
+        # Preparar textos para embedding em lote (para OpenAI e DeepInfra)
+        texts_for_batch_embedding = []
+        chunks_for_batch_processing = []
         for chunk_idx, chunk in enumerate(chunks_for_doc):
             embedding_text_raw = f"Documento: {chunk['document_title']}. Seção: {chunk['chunk_title']}. Conteúdo: {chunk['chunk_content']}"
-            embedding_text = clean_text_for_embedding(embedding_text_raw)
-            if len(embedding_text) > EMBEDDING_TEXT_MAX_LENGTH:
-                embedding_text = embedding_text[:EMBEDDING_TEXT_MAX_LENGTH]
-                print(f"  Truncando chunk {chunk_idx+1} de '{chunk['chunk_title']}' para {EMBEDDING_TEXT_MAX_LENGTH} caracteres para embedding.")
-            embedding_texts.append(embedding_text)
+            embedding_text_cleaned = clean_text_for_embedding(embedding_text_raw)
+            current_max_len = EMBEDDING_TEXT_MAX_LENGTH_GEMINI
+            if provider.lower() == "openai":
+                current_max_len = EMBEDDING_TEXT_MAX_LENGTH_OPENAI
+            if len(embedding_text_cleaned) > current_max_len:
+                embedding_text_cleaned = embedding_text_cleaned[:current_max_len]
+                print(
+                    f"  Truncando chunk {chunk_idx+1} de '{chunk['chunk_title']}' para {current_max_len} caracteres para embedding."
+                )
 
-        # Gera embeddings em lote para DeepInfra, ou um a um para Gemini
-        if provider.lower() in ["deepinfra", "maritaca"]:
-            embeddings = generate_embedding_deepinfra(embedding_texts, deepinfra_api_key)
-            for chunk, embedding in zip(chunks_for_doc, embeddings):
-                chunk["embedding"] = embedding
+            if not embedding_text_cleaned.strip():
+                print(
+                    f"  Atenção: Texto limpo para embedding vazio para chunk '{chunk['chunk_title']}'. Pulando embedding."
+                )
+                chunk["embedding"] = None
                 all_processed_chunks.append(chunk)
-        else:
-            for chunk_idx, chunk in enumerate(chunks_for_doc):
-                embedding_text = embedding_texts[chunk_idx]
-                if not embedding_text.strip():
-                    print(f"  Atenção: Texto limpo para embedding vazio para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Pulando embedding.")
-                    chunk["embedding"] = None
-                    all_processed_chunks.append(chunk)
-                    continue
-                print(f"  Gerando embedding para chunk {chunk_idx+1} de '{chunk['chunk_title']}'...")
-                chunk_embedding = generate_embedding_with_retry(embedding_text)
-                if chunk_embedding is not None:
-                    chunk["embedding"] = chunk_embedding
+            else:
+                if provider.lower() == "gemini":
+                    print(
+                        f"  Gerando embedding (Gemini) para chunk {chunk_idx+1} de '{chunk['chunk_title']}'..."
+                    )
+                    chunk_embedding = generate_embedding_gemini_with_retry(
+                        embedding_text_cleaned, actual_gemini_api_key
+                    )
+                    if chunk_embedding is not None:
+                        chunk["embedding"] = chunk_embedding
+                    else:
+                        print(
+                            f"  Atenção: Falha ao gerar embedding (Gemini) para chunk '{chunk['chunk_title']}'."
+                        )
+                        chunk["embedding"] = None
                     all_processed_chunks.append(chunk)
                 else:
-                    print(f"  Atenção: Falha ao gerar embedding para chunk '{chunk['chunk_title']}' do documento '{doc_title}'. Chunk será incluído sem embedding.")
-                    chunk["embedding"] = None
-                    all_processed_chunks.append(chunk)
+                    texts_for_batch_embedding.append(embedding_text_cleaned)
+                    chunks_for_batch_processing.append(chunk)
+
+        if provider.lower() == "openai" and texts_for_batch_embedding:
+            print(f"  Gerando embeddings para {len(texts_for_batch_embedding)} chunks com OpenAI...")
+            embeddings_batch = generate_embedding_openai(texts_for_batch_embedding, actual_openai_api_key)
+            for chunk, embedding in zip(chunks_for_batch_processing, embeddings_batch):
+                chunk["embedding"] = embedding
+                all_processed_chunks.append(chunk)
+        elif provider.lower() in ["deepinfra", "maritaca"] and texts_for_batch_embedding:
+            print(f"  Gerando embeddings para {len(texts_for_batch_embedding)} chunks com DeepInfra...")
+            embeddings_batch = generate_embedding_deepinfra(texts_for_batch_embedding, actual_deepinfra_api_key)
+            for chunk, embedding in zip(chunks_for_batch_processing, embeddings_batch):
+                chunk["embedding"] = embedding
+                all_processed_chunks.append(chunk)
 
     if not all_processed_chunks:
         print("Nenhum chunk processado com sucesso (sem embeddings ou dados de entrada).")
@@ -260,11 +325,24 @@ def cli_main():
     parser = argparse.ArgumentParser(description="Gera embeddings para documentos a partir de um JSON.")
     parser.add_argument("input_json_path", help="Caminho para o arquivo JSON de entrada (ex: raw_docs.json).")
     parser.add_argument("output_json_path", help="Caminho para o arquivo JSON de saída dos embeddings (ex: embeddings.json).")
-    parser.add_argument("--api-key", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
-    parser.add_argument("--provider", choices=["gemini", "deepinfra", "maritaca"], default="gemini", help="Provedor de embeddings: gemini (padrão), deepinfra ou maritaca.")
-    parser.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)")
+    parser.add_argument("--gemini-api-key", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
+    parser.add_argument(
+        "--provider",
+        choices=["gemini", "deepinfra", "maritaca", "openai"],
+        default="gemini",
+        help="Provedor de embeddings: gemini (padrão), deepinfra, maritaca ou openai.",
+    )
+    parser.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via DEEPINFRA_API_KEY no .env)")
+    parser.add_argument("--openai-api-key", help="Chave da API OpenAI (opcional, pode ser fornecida via OPENAI_API_KEY no .env)")
     args = parser.parse_args()
-    success = generate_embeddings_for_docs(args.input_json_path, args.output_json_path, args.api_key, args.provider, args.deepinfra_api_key)
+    success = generate_embeddings_for_docs(
+        args.input_json_path,
+        args.output_json_path,
+        gemini_api_key_param=args.gemini_api_key,
+        provider=args.provider,
+        deepinfra_api_key_param=args.deepinfra_api_key,
+        openai_api_key_param=args.openai_api_key,
+    )
     if not success:
         print("A geração de embeddings falhou.")
         sys.exit(1)
