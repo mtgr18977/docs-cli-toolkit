@@ -6,10 +6,16 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import time
-import numpy as np # Para cálculo de similaridade de cosseno
-import re # Para manipulação de texto e divisão de frases
-import argparse # Adicionado para parsing de argumentos CLI
-import sys # Adicionado para sys.exit
+import numpy as np  # Para cálculo de similaridade de cosseno
+import re  # Para manipulação de texto e divisão de frases
+import argparse  # Adicionado para parsing de argumentos CLI
+import sys  # Adicionado para sys.exit
+
+from utils import (
+    clean_text_for_embedding,
+    generate_embedding_with_retry,
+    GEMINI_EMBEDDING_MODEL,
+)
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -20,89 +26,14 @@ if not GOOGLE_API_KEY:
     raise ValueError("A variável de ambiente GOOGLE_API_KEY não está configurada.")
 # genai.configure(api_key=GOOGLE_API_KEY)  # Removido porque não existe em google.generativeai
 os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY  # Garante que a variável de ambiente está definida
-EMBEDDING_MODEL = "models/embedding-001"
+EMBEDDING_MODEL = GEMINI_EMBEDDING_MODEL
 
 # Limite de caracteres para o embedding, para evitar exceder o limite de tokens da API
 EMBEDDING_TEXT_MAX_LENGTH = 1024
 
-# --- Variáveis para controle de Rate Limiting (igual ao generate_embeddings.py) ---
-REQUEST_LIMIT_PER_MINUTE = 150
-request_count = 0
-last_request_time = time.time()
+# Funções auxiliares
 
-# Funções auxiliares (copiadas de generate_embeddings.py e adaptadas)
 
-def clean_text_for_embedding(text):
-    """
-    Remove caracteres especiais e formatação markdown para texto que será EMBEDDADO.
-    Esta função foi aprimorada para lidar com mais casos de Markdown.
-    """
-    if not isinstance(text, str):
-        return ""
-
-    # Remove links markdown (e.g., [texto](link))
-    text = re.sub(r'\[.*?\]\(.*?\)', '', text)
-    # Remove bold/italic (**, __, *, _)
-    text = re.sub(r'\*\*|__|\*|_', '', text)
-    # Remove cabeçalhos (#, ##, ### etc.)
-    text = re.sub(r'#+\s*', '', text)
-    # Remove blocos de código (``` ou `)
-    text = re.sub(r'```.*?```', '', text, flags=re.DOTALL) # Para blocos multilinhas
-    text = re.sub(r'`[^`]*`', '', text) # Para blocos de uma linha
-    # Remove blockquotes (>)
-    text = re.sub(r'^\s*>\s*', '', text, flags=re.MULTILINE)
-    # Remove linhas de lista (- + *)
-    text = re.sub(r'^\s*[-+*]\s*', '', text, flags=re.MULTILINE)
-    # Remove linhas horizontais (---, ***, ___)
-    text = re.sub(r'^-{3,}|^\*{3,}|^__{3,}', '', text, flags=re.MULTILINE)
-    # Remove múltiplos espaços e quebras de linha para um único espaço
-    text = re.sub(r'\s+', ' ', text).strip()
-    # Substitui múltiplas quebras de linha por um único espaço (se houver alguma que restou)
-    text = re.sub(r'\n+', ' ', text).strip()
-    return text
-
-def generate_embedding_with_retry(text_content):
-    """
-    Gera um embedding para o conteúdo de texto, com mecanismo de retry e rate limiting.
-    """
-    global request_count, last_request_time
-
-    current_time = time.time()
-    elapsed_time = current_time - last_request_time
-
-    if elapsed_time < 60 and request_count >= REQUEST_LIMIT_PER_MINUTE:
-        sleep_duration = 60 - elapsed_time
-        print(f"  Atingido limite de requisições por minuto. Aguardando {sleep_duration:.2f} segundos...")
-        time.sleep(sleep_duration)
-        request_count = 0
-        last_request_time = time.time()
-    elif elapsed_time >= 60:
-        request_count = 0
-        last_request_time = time.time()
-
-    request_count += 1
-
-    retries = 3
-    for attempt in range(retries):
-        try:
-            # É importante limpar o texto antes de gerar o embedding, assim como no generate_embeddings.py
-            cleaned_text = clean_text_for_embedding(text_content)
-            if not cleaned_text: # Se o texto ficar vazio após a limpeza, não tentar gerar embedding
-                return None
-
-            if len(cleaned_text) > EMBEDDING_TEXT_MAX_LENGTH:
-                cleaned_text = cleaned_text[:EMBEDDING_TEXT_MAX_LENGTH]
-                # print(f"  Truncando texto para embedding para {EMBEDDING_TEXT_MAX_LENGTH} caracteres.")
-
-            response = genai.generate_embeddings(model=EMBEDDING_MODEL, content=cleaned_text) # type: ignore
-            return response['embeddings'][0]['values']
-        except Exception as e:
-            print(f"Erro ao gerar embedding (tentativa {attempt+1}/{retries}): {e}")
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt) # Espera exponencial
-            else:
-                return None # Retorna None se todas as retries falharem
-    return None
 
 def cosine_similarity(vecA, vecB):
     """
@@ -216,7 +147,14 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
         print(f"\n--- Avaliando Pergunta {i + 1}/{total_questions}: '{question[:100]}...' ---") # Mostra o começo da pergunta
 
         # 1. Gerar embedding da pergunta
-        query_embedding = generate_embedding_with_retry(question)
+        question_clean = clean_text_for_embedding(question)
+        if len(question_clean) > EMBEDDING_TEXT_MAX_LENGTH:
+            question_clean = question_clean[:EMBEDDING_TEXT_MAX_LENGTH]
+        query_embedding = generate_embedding_with_retry(
+            question_clean,
+            GOOGLE_API_KEY,
+            model=EMBEDDING_MODEL,
+        )
         if query_embedding is None:
             print(f"  Falha ao gerar embedding para a pergunta. Pulando.")
             evaluation_results.append({
@@ -259,7 +197,14 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
             status = "Resposta Ideal Vazia/Inválida"
         else:
             for ideal_sentence in ideal_answer_sentences:
-                sentence_embedding = generate_embedding_with_retry(ideal_sentence)
+                sentence_clean = clean_text_for_embedding(ideal_sentence)
+                if len(sentence_clean) > EMBEDDING_TEXT_MAX_LENGTH:
+                    sentence_clean = sentence_clean[:EMBEDDING_TEXT_MAX_LENGTH]
+                sentence_embedding = generate_embedding_with_retry(
+                    sentence_clean,
+                    GOOGLE_API_KEY,
+                    model=EMBEDDING_MODEL,
+                )
 
                 sentence_covered_by_chunk = False
                 best_similarity_for_sentence = 0.0
