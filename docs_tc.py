@@ -96,7 +96,7 @@ def main():
     parser_extract.add_argument("--output_file", default=DEFAULT_RAW_DOCS,
                                 help=f"Arquivo JSON de saída para os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
 
-    # --- Subparser para generate_embedings.py ---
+    # --- Subparser para generate_embeddings.py ---
     parser_generate = subparsers.add_parser("generate_embeddings", help="Gera embeddings para os documentos processados.")
     parser_generate.add_argument("--input_file", default=DEFAULT_RAW_DOCS,
                                  help=f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
