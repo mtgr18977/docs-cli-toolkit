@@ -1,6 +1,6 @@
 # Docs CLI Toolkit
 
-Uma ferramenta de linha de comando para processamento e análise de documentação, com suporte a geração de embeddings usando a API do Google Gemini.
+Uma ferramenta de linha de comando para processamento e análise de documentação, com suporte a geração de embeddings usando as APIs do Google Gemini, OpenAI ou DeepInfra.
 
 ## Instalação
 
@@ -8,9 +8,9 @@ Uma ferramenta de linha de comando para processamento e análise de documentaç�
 pip install docs-cli-toolkit
 ```
 
-## Configuração da API do Google Gemini ou DeepInfra/Maritaca
+## Configuração das APIs (Gemini, DeepInfra/Maritaca ou OpenAI)
 
-A ferramenta oferece três maneiras de configurar a chave da API do Google Gemini **ou** DeepInfra/Maritaca:
+A ferramenta oferece três maneiras de configurar as chaves das APIs do Google Gemini, DeepInfra/Maritaca ou OpenAI:
 
 1. **Configuração Global (Recomendada para Gemini):**
    ```bash
@@ -30,13 +30,18 @@ A ferramenta oferece três maneiras de configurar a chave da API do Google Gemin
      ```bash
      docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave-deepinfra" input.json output.json
      ```
+   - Para OpenAI:
+     ```bash
+     docs-cli generate_embeddings --provider openai --openai-api-key "sua-chave-openai" input.json output.json
+     ```
 
 3. **Via Variável de Ambiente:**
    Crie um arquivo `.env` no diretório do projeto:
    ```
    GOOGLE_API_KEY=sua-chave-gemini
    DEEPINFRA_API_KEY=sua-chave-deepinfra
-   ```
+   OPENAI_API_KEY=sua-chave-openai
+  ```
 
 ## Comandos Disponíveis
 
@@ -60,6 +65,8 @@ docs-cli generate_embeddings [--input_file arquivo_entrada.json] [--output_file 
 
 # Usando DeepInfra/Maritaca
 docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave" [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
+# Usando OpenAI
+docs-cli generate_embeddings --provider openai --openai-api-key "sua-chave" [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
 ```
 
 ### 4. Limpeza de CSV
@@ -165,6 +172,8 @@ A ferramenta utiliza os seguintes arquivos intermediários por padrão:
 
 - Python 3.8+
 - Google Gemini API Key
+- (Opcional) OpenAI API Key
+- (Opcional) DeepInfra API Key
 - Dependências listadas em `pyproject.toml`
 
 ## Contribuindo

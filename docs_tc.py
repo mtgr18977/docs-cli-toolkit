@@ -42,22 +42,31 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
 
-def run_script(command_args):
+def run_script(command_args, verbose=False):
     """Executa um script (entry point) como um subprocesso."""
     # Espera que command_args[0] seja um executável no PATH (ex: 'docs-tc-extract-data')
     command = command_args
     print(f"🚀 Executando: {' '.join(command)}")
     try:
-        process = subprocess.run(command, capture_output=True, text=True, encoding=sys.stdout.encoding or 'latin-1', errors='replace')
+        process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
 
-        if process.stdout:
+        if verbose and process.stdout:
             print("Output:\n", process.stdout)
         if process.stderr:
             print("Errors:\n", process.stderr, file=sys.stderr)
 
         if process.returncode != 0:
-            print(f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}", file=sys.stderr)
-            return None # Indica falha para as funções run_step_or_exit
+            print(
+                f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}",
+                file=sys.stderr,
+            )
+            return None  # Indica falha para as funções run_step_or_exit
 
         print(f"✅ Script {' '.join(command_args)} concluído com sucesso.")
         return process
@@ -74,11 +83,20 @@ def main():
     parser = argparse.ArgumentParser(description="Docs Toolkit CLI - Orquestrador de scripts de processamento de documentação.")
     
     # Adiciona argumento global para a chave da API
-    parser.add_argument("--api", help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)")
+    parser.add_argument(
+        "--api",
+        help="Chave da API do Google Gemini (opcional, pode ser fornecida via GOOGLE_API_KEY no .env)",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Exibe a saída completa dos scripts chamados",
+    )
     
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis", required=True)
 
     # --- Subparser para configuração da API ---
+codex/make-api_key-optional-in-docs_tc.py
     parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
     parser_api.add_argument(
         "api_key",
@@ -86,6 +104,20 @@ def main():
         help="Chave da API do Google Gemini para ser salva globalmente.",
     )
     parser_api.add_argument("--show", action="store_true", help="Mostra a chave da API atual (parcialmente mascarada).")
+    parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
+    # Torna o argumento da chave opcional para permitir 'docs-cli api --show'
+    parser_api.add_argument(
+        "api_key",
+        nargs="?",
+        default=None,
+        help="Chave da API do Google Gemini para ser salva globalmente."
+    )
+    parser_api.add_argument(
+        "--show",
+        action="store_true",
+        help="Mostra a chave da API atual (parcialmente mascarada)."
+    )
+main
 
     # --- Subparser para merge_markdown.py ---
     parser_merge = subparsers.add_parser("merge", help="Consolida arquivos Markdown de um diretório.")
@@ -100,15 +132,26 @@ def main():
     parser_extract.add_argument("--output_file", default=DEFAULT_RAW_DOCS,
                                 help=f"Arquivo JSON de saída para os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
 
-    # --- Subparser para generate_embedings.py ---
+    # --- Subparser para generate_embeddings.py ---
     parser_generate = subparsers.add_parser("generate_embeddings", help="Gera embeddings para os documentos processados.")
     parser_generate.add_argument("--input_file", default=DEFAULT_RAW_DOCS,
                                  help=f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
     parser_generate.add_argument("--output_file", default=DEFAULT_EMBEDDINGS,
                                  help=f"Arquivo JSON de saída para os embeddings (padrão: {DEFAULT_EMBEDDINGS}).")
-    parser_generate.add_argument("--provider", choices=["gemini", "deepinfra", "maritaca"], default="gemini",
-                                 help="Provedor de embeddings: gemini (padrão), deepinfra ou maritaca.")
-    parser_generate.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)")
+    parser_generate.add_argument(
+        "--provider",
+        choices=["gemini", "deepinfra", "maritaca", "openai"],
+        default="gemini",
+        help="Provedor de embeddings: gemini (padrão), deepinfra, maritaca ou openai.",
+    )
+    parser_generate.add_argument(
+        "--deepinfra-api-key",
+        help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)",
+    )
+    parser_generate.add_argument(
+        "--openai-api-key",
+        help="Chave da API OpenAI (opcional, pode ser fornecida via .env)",
+    )
 
     # --- Subparser para limpa_csv.py ---
     parser_clean_csv = subparsers.add_parser("clean_csv", help="Limpa o arquivo CSV de Perguntas e Respostas.")
@@ -183,6 +226,7 @@ def main():
 
     # Se o comando for 'api', lida com a configuração da API
     if args.command == "api":
+codex/make-api_key-optional-in-docs_tc.py
         if args.api_key:
             config["api_key"] = args.api_key
             save_config(config)
@@ -191,13 +235,25 @@ def main():
                 masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
                 print(f"Chave da API atual: {masked_key}")
         elif args.show:
+        if args.show:
+main
             if "api_key" in config:
                 masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
                 print(f"Chave da API atual: {masked_key}")
             else:
                 print("Nenhuma chave da API configurada.")
+codex/make-api_key-optional-in-docs_tc.py
         else:
             print("Informe uma chave da API ou use --show para visualizar a atual.")
+
+        elif args.api_key:
+            config["api_key"] = args.api_key
+            save_config(config)
+            print("✅ Chave da API configurada com sucesso!")
+        else:
+            print("É necessário fornecer a chave da API ou usar --show para exibir a chave atual.")
+            parser_api.print_help()
+main
         return
 
     # Usa a chave da API da configuração se não for fornecida via linha de comando
@@ -215,46 +271,50 @@ def main():
     }
 
     if args.command == "merge":
-        run_script([SCRIPT_MAP["merge"], args.input_dir, args.output_file])
+        run_script([SCRIPT_MAP["merge"], args.input_dir, args.output_file], verbose=args.verbose)
     elif args.command == "extract":
-        run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file])
+        run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file], verbose=args.verbose)
     elif args.command == "generate_embeddings":
         command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
         if api_key:
-            command_args.extend(["--api-key", api_key])
+            command_args.extend(["--gemini-api-key", api_key])
         if hasattr(args, "provider") and args.provider:
             command_args.extend(["--provider", args.provider])
         if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
             command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
-        run_script(command_args)
+        if hasattr(args, "openai_api_key") and args.openai_api_key:
+            command_args.extend(["--openai-api-key", args.openai_api_key])
+        run_script(command_args, verbose=args.verbose)
     elif args.command == "clean_csv":
-        run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
+        run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file], verbose=args.verbose)
     elif args.command == "evaluate":
         run_script([
             SCRIPT_MAP["evaluate"],
             args.qa_file,
             args.embeddings_file,
-            "-k", str(args.top_k),
-            "-o", args.output
-        ])
+            "-k",
+            str(args.top_k),
+            "-o",
+            args.output,
+        ], verbose=args.verbose)
     elif args.command == "report_md":
         run_script([
             SCRIPT_MAP["report_md"],
             args.input_file,
             args.output_file,
-            str(args.top_k_chunks)
-        ])
+            str(args.top_k_chunks),
+        ], verbose=args.verbose)
     elif args.command == "report_html":
         run_script([
             SCRIPT_MAP["report_html"],
             args.input_file,
             args.output_file,
-            str(args.top_k_chunks)
-        ])
+            str(args.top_k_chunks),
+        ], verbose=args.verbose)
     elif args.command == "full_flow":
         print("🚀 Iniciando fluxo completo...")
         def run_step_or_exit(step_command_args):
-            if run_script(step_command_args) is None:
+            if run_script(step_command_args, verbose=args.verbose) is None:
                 print(f"❌ Etapa {step_command_args[0]} falhou. Abortando fluxo completo.")
                 sys.exit(1)
 
@@ -265,7 +325,7 @@ def main():
         # Adiciona a chave da API ao comando generate_embeddings se fornecida
         generate_embeddings_args = [SCRIPT_MAP["generate_embeddings"], args.raw_docs_file, args.embeddings_file]
         if api_key:
-            generate_embeddings_args.extend(["--api-key", api_key])
+            generate_embeddings_args.extend(["--gemini-api-key", api_key])
         run_step_or_exit(generate_embeddings_args)
         
         run_step_or_exit([
@@ -299,7 +359,7 @@ def main():
         default_eval_top_k = 5
 
         def run_custom_step_or_exit(step_command_args):
-            if run_script(step_command_args) is None:
+            if run_script(step_command_args, verbose=args.verbose) is None:
                 print(f"❌ Etapa {step_command_args[0]} falhou. Abortando fluxo customizado.")
                 sys.exit(1)
 
@@ -317,11 +377,13 @@ def main():
                      current_raw_docs_file = input(f"Arquivo Raw Docs ({current_raw_docs_file}) não encontrado. Informe o caminho correto: ")
                 command_args = [SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file]
                 if api_key:
-                    command_args.extend(["--api-key", api_key])
+                    command_args.extend(["--gemini-api-key", api_key])
                 if hasattr(args, "provider") and args.provider:
                     command_args.extend(["--provider", args.provider])
                 if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
                     command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
+                if hasattr(args, "openai_api_key") and args.openai_api_key:
+                    command_args.extend(["--openai-api-key", args.openai_api_key])
                 run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
                 qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
