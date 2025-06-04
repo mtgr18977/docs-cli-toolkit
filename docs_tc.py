@@ -112,9 +112,20 @@ def main():
                                  help=f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
     parser_generate.add_argument("--output_file", default=DEFAULT_EMBEDDINGS,
                                  help=f"Arquivo JSON de saída para os embeddings (padrão: {DEFAULT_EMBEDDINGS}).")
-    parser_generate.add_argument("--provider", choices=["gemini", "deepinfra", "maritaca"], default="gemini",
-                                 help="Provedor de embeddings: gemini (padrão), deepinfra ou maritaca.")
-    parser_generate.add_argument("--deepinfra-api-key", help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)")
+    parser_generate.add_argument(
+        "--provider",
+        choices=["gemini", "deepinfra", "maritaca", "openai"],
+        default="gemini",
+        help="Provedor de embeddings: gemini (padrão), deepinfra, maritaca ou openai.",
+    )
+    parser_generate.add_argument(
+        "--deepinfra-api-key",
+        help="Chave da API DeepInfra/Maritaca (opcional, pode ser fornecida via .env)",
+    )
+    parser_generate.add_argument(
+        "--openai-api-key",
+        help="Chave da API OpenAI (opcional, pode ser fornecida via .env)",
+    )
 
     # --- Subparser para limpa_csv.py ---
     parser_clean_csv = subparsers.add_parser("clean_csv", help="Limpa o arquivo CSV de Perguntas e Respostas.")
@@ -225,11 +236,13 @@ def main():
     elif args.command == "generate_embeddings":
         command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
         if api_key:
-            command_args.extend(["--api-key", api_key])
+            command_args.extend(["--gemini-api-key", api_key])
         if hasattr(args, "provider") and args.provider:
             command_args.extend(["--provider", args.provider])
         if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
             command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
+        if hasattr(args, "openai_api_key") and args.openai_api_key:
+            command_args.extend(["--openai-api-key", args.openai_api_key])
         run_script(command_args)
     elif args.command == "clean_csv":
         run_script([SCRIPT_MAP["clean_csv"], args.input_file, args.output_file])
@@ -269,7 +282,7 @@ def main():
         # Adiciona a chave da API ao comando generate_embeddings se fornecida
         generate_embeddings_args = [SCRIPT_MAP["generate_embeddings"], args.raw_docs_file, args.embeddings_file]
         if api_key:
-            generate_embeddings_args.extend(["--api-key", api_key])
+            generate_embeddings_args.extend(["--gemini-api-key", api_key])
         run_step_or_exit(generate_embeddings_args)
         
         run_step_or_exit([
@@ -321,11 +334,13 @@ def main():
                      current_raw_docs_file = input(f"Arquivo Raw Docs ({current_raw_docs_file}) não encontrado. Informe o caminho correto: ")
                 command_args = [SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file]
                 if api_key:
-                    command_args.extend(["--api-key", api_key])
+                    command_args.extend(["--gemini-api-key", api_key])
                 if hasattr(args, "provider") and args.provider:
                     command_args.extend(["--provider", args.provider])
                 if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
                     command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
+                if hasattr(args, "openai_api_key") and args.openai_api_key:
+                    command_args.extend(["--openai-api-key", args.openai_api_key])
                 run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
                 qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
