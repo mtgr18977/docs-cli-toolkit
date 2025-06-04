@@ -2,6 +2,7 @@
 import re
 import json
 import os
+from exceptions import MinhaExcecaoEspecifica
 
 def extract_docs_from_consolidated_md(input_md_path="corpus_consolidated.md", output_json_path="raw_docs.json"):
     """
@@ -119,7 +120,7 @@ def cli_main():
     success = extract_docs_from_consolidated_md(args.input_md_path, args.output_json_path)
     if not success:
         print("A extração de documentos do MD consolidado falhou.")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em extract_data_from_markdown")
     else:
         print("Extração de documentos do MD consolidado concluída com sucesso.")
 

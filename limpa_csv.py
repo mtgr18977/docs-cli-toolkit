@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 import argparse
 import sys
+from exceptions import MinhaExcecaoEspecifica
 import re
 
 def clean_text(text):
@@ -204,7 +205,7 @@ def cli_main():
     
     if not os.path.exists(args.input_file):
         print(f"❌ Arquivo '{args.input_file}' não encontrado!")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Entrada de arquivo CSV não encontrado")
     
     stats = clean_csv_data(
         input_file=args.input_file,
@@ -221,7 +222,7 @@ def cli_main():
         print_summary(stats)
     else:
         print("❌ Falha no processamento do arquivo!")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em limpa_csv")
 
 if __name__ == "__main__":
     cli_main()

@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import argparse # Make sure argparse is imported
 import sys      # Make sure sys is imported
+from exceptions import MinhaExcecaoEspecifica
 
 # ... (keep your generate_html_report function as is) ...
 def generate_html_report(evaluation_json_path="evaluation_results.json", output_html_path="coverage_report.html", top_k_chunks=5):
@@ -196,7 +197,7 @@ def cli_main():
     )
     if not success:
         print("A geração do relatório HTML falhou.")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em generate_report_html")
     else:
         print("Geração do relatório HTML concluída com sucesso.")
 

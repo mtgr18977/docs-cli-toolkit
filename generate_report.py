@@ -3,6 +3,7 @@
 import json
 import os
 from datetime import datetime
+from exceptions import MinhaExcecaoEspecifica
 
 def generate_md_report(evaluation_json_path="evaluation_results.json", output_md_path="coverage_report.md", top_k_chunks=5):
     """
@@ -116,6 +117,6 @@ if __name__ == "__main__":
     )
     if not success:
         print("A geração do relatório Markdown falhou.")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em generate_report")
     else:
         print("Geração do relatório Markdown concluída com sucesso.")

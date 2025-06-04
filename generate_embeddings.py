@@ -9,6 +9,7 @@ import time
 import re
 import requests  # Adicionado para DeepInfra
 import sys  # Garantir importação para uso em cli_main()
+from exceptions import MinhaExcecaoEspecifica
 
 from utils import (
     clean_text_for_embedding,
@@ -289,7 +290,7 @@ def cli_main():
     )
     if not success:
         print("A geração de embeddings falhou.")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em generate_embeddings")
     else:
         print("Geração de embeddings concluída com sucesso.")
 

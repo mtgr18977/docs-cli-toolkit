@@ -7,6 +7,7 @@ import sys
 import os
 import json
 from pathlib import Path
+from exceptions import MinhaExcecaoEspecifica
 
 # Nomes de arquivo padrão intermediários e finais
 DEFAULT_CORPUS_CONSOLIDATED = "corpus_consolidated.md"
@@ -42,13 +43,36 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=4)
 
-def run_script(command_args):
-    """Executa um script (entry point) como um subprocesso."""
-    # Espera que command_args[0] seja um executável no PATH (ex: 'docs-tc-extract-data')
+def run_script(command_args=None, module_func=None, func_args=None):
+    """Executa um script via subprocess ou como módulo."""
+
+    if module_func:
+        func_args = func_args or []
+        print(f"🚀 Executando módulo: {module_func.__name__}")
+        try:
+            module_func(*func_args)
+            print(f"✅ Script {module_func.__name__} concluído com sucesso.")
+            return True
+        except MinhaExcecaoEspecifica as e:
+            print(f"❌ Erro ao executar {module_func.__name__}: {e}", file=sys.stderr)
+            return None
+        except Exception as e:
+            print(f"🚨 Exceção ao executar {module_func.__name__}: {e}", file=sys.stderr)
+            return None
+
+    if not command_args:
+        raise ValueError("command_args ou module_func devem ser fornecidos")
+
     command = command_args
     print(f"🚀 Executando: {' '.join(command)}")
     try:
-        process = subprocess.run(command, capture_output=True, text=True, encoding=sys.stdout.encoding or 'latin-1', errors='replace')
+        process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            encoding=sys.stdout.encoding or 'latin-1',
+            errors='replace'
+        )
 
         if process.stdout:
             print("Output:\n", process.stdout)
@@ -56,17 +80,26 @@ def run_script(command_args):
             print("Errors:\n", process.stderr, file=sys.stderr)
 
         if process.returncode != 0:
-            print(f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}", file=sys.stderr)
-            return None # Indica falha para as funções run_step_or_exit
+            print(
+                f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}",
+                file=sys.stderr,
+            )
+            return None
 
         print(f"✅ Script {' '.join(command_args)} concluído com sucesso.")
         return process
 
     except FileNotFoundError:
-        print(f"🚨 Erro: Comando '{command[0]}' não encontrado. Verifique se o docs-cli está instalado corretamente e se os scripts dos subcomandos (ex: {command[0]}.exe) foram criados na pasta Scripts do seu ambiente virtual e se o ambiente virtual está ativo.", file=sys.stderr)
-        sys.exit(1) # Falha crítica se o comando do script não for encontrado
+        print(
+            f"🚨 Erro: Comando '{command[0]}' não encontrado. Verifique se o docs-cli está instalado corretamente e se os scripts dos subcomandos (ex: {command[0]}.exe) foram criados na pasta Scripts do seu ambiente virtual e se o ambiente virtual está ativo.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     except Exception as e:
-        print(f"🚨 Exceção ao executar o subprocesso {' '.join(command)}: {e}", file=sys.stderr)
+        print(
+            f"🚨 Exceção ao executar o subprocesso {' '.join(command)}: {e}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 

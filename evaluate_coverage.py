@@ -10,6 +10,7 @@ import numpy as np  # Para cálculo de similaridade de cosseno
 import re  # Para manipulação de texto e divisão de frases
 import argparse  # Adicionado para parsing de argumentos CLI
 import sys  # Adicionado para sys.exit
+from exceptions import MinhaExcecaoEspecifica
 
 from utils import (
     clean_text_for_embedding,
@@ -295,11 +296,11 @@ def cli_main():
         qa_filepath=args.qa_filepath,
         chunks_filepath=args.embeddings_filepath,
         top_k_chunks=args.top_k_chunks,
-        output_json_path=args.output
+        output_json_path=args.output,
     )
     if not success:
         print("\nA avaliação de cobertura da documentação falhou.")
-        sys.exit(1)
+        raise MinhaExcecaoEspecifica("Falha em evaluate_coverage")
     else:
         print("\nA avaliação de cobertura da documentação foi concluída com sucesso.")
 
