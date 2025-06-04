@@ -16,7 +16,7 @@ A ferramenta oferece três maneiras de configurar a chave da API do Google Gemin
    ```bash
    docs-cli api "sua-chave-api"
    ```
-   Para verificar a chave configurada (parcialmente mascarada):
+   Para verificar a chave configurada (parcialmente mascarada) sem fornecer uma nova chave:
    ```bash
    docs-cli api --show
    ```

@@ -80,7 +80,11 @@ def main():
 
     # --- Subparser para configuração da API ---
     parser_api = subparsers.add_parser("api", help="Configura a chave da API do Google Gemini.")
-    parser_api.add_argument("api_key", help="Chave da API do Google Gemini para ser salva globalmente.")
+    parser_api.add_argument(
+        "api_key",
+        nargs="?",
+        help="Chave da API do Google Gemini para ser salva globalmente.",
+    )
     parser_api.add_argument("--show", action="store_true", help="Mostra a chave da API atual (parcialmente mascarada).")
 
     # --- Subparser para merge_markdown.py ---
@@ -179,16 +183,21 @@ def main():
 
     # Se o comando for 'api', lida com a configuração da API
     if args.command == "api":
-        if args.show:
+        if args.api_key:
+            config["api_key"] = args.api_key
+            save_config(config)
+            print("✅ Chave da API configurada com sucesso!")
+            if args.show:
+                masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
+                print(f"Chave da API atual: {masked_key}")
+        elif args.show:
             if "api_key" in config:
                 masked_key = config["api_key"][:8] + "..." + config["api_key"][-4:]
                 print(f"Chave da API atual: {masked_key}")
             else:
                 print("Nenhuma chave da API configurada.")
         else:
-            config["api_key"] = args.api_key
-            save_config(config)
-            print("✅ Chave da API configurada com sucesso!")
+            print("Informe uma chave da API ou use --show para visualizar a atual.")
         return
 
     # Usa a chave da API da configuração se não for fornecida via linha de comando
