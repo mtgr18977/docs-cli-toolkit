@@ -62,10 +62,16 @@ def run_script(command_args, verbose=False):
             print("Errors:\n", process.stderr, file=sys.stderr)
 
         if process.returncode != 0:
-            print(
-                f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}",
-                file=sys.stderr,
-            )
+            if not process.stderr and not process.stdout:
+                print(
+                    f"❌ Erro ao executar {' '.join(command)}. O processo terminou sem produzir saída.",
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    f"❌ Erro ao executar {' '.join(command)}. Código de saída: {process.returncode}",
+                    file=sys.stderr,
+                )
             return None  # Indica falha para as funções run_step_or_exit
 
         print(f"✅ Script {' '.join(command_args)} concluído com sucesso.")
@@ -90,7 +96,14 @@ def main():
     parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Exibe a saída completa dos scripts chamados",
+        default=True,
+        help="Exibe a saída completa dos scripts chamados (padrão)",
+    )
+    parser.add_argument(
+        "--quiet",
+        dest="verbose",
+        action="store_false",
+        help="Executa os subcomandos sem exibir sua saída",
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Comandos disponíveis", required=True)
