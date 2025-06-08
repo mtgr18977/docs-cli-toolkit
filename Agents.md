@@ -163,7 +163,7 @@ _Se houver outras credenciais (por ex., chaves para repositório, tokens de CI/C
 
 ---
 
-### 4.3 Agent de Relatório / Reporting Agent  
+### 4.3 Agent de Relatório / Reporting Agent
 - **Nome do Agente / Agent Name:**  
   ```
   report_generator
@@ -193,7 +193,40 @@ _Se houver outras credenciais (por ex., chaves para repositório, tokens de CI/C
      - _Saída:_ String contendo todo o conteúdo em Markdown.  
   2. `generate_html(evaluation_json: str) -> str`  
      - _Entrada:_ Mesma do método acima.  
-     - _Saída:_ String em HTML formatado.  
+    - _Saída:_ String em HTML formatado.
+
+---
+
+### 4.4 Agent de Verificação de Estilo / Style Checker Agent
+- **Nome do Agente / Agent Name:**
+  ```
+  style_checker
+  ```
+- **Responsabilidade / Responsibility:**
+  - Carregar embeddings do guia de estilo.
+  - Gerar embedding para o texto submetido.
+  - Calcular similaridade e apontar sentenças fora do padrão.
+- **Código de Instanciação / Instantiation Code:**
+  ```python
+  from codex_agents import StyleCheckerAgent
+
+  style_agent = StyleCheckerAgent(
+      embeddings_path="style_embeddings.json",
+      api_key=os.getenv("GOOGLE_API_KEY"),
+      threshold=0.8
+  )
+  ```
+- **Parâmetros de Inicialização / Initialization Parameters:**
+  | Parâmetro        | Tipo   | Descrição                                                     | Padrão                     |
+  |------------------|--------|---------------------------------------------------------------|----------------------------|
+  | `embeddings_path`| string | Caminho para JSON de embeddings do guia de estilo             | `"style_embeddings.json"` |
+  | `api_key`        | string | Chave da API para gerar embeddings em tempo real              | `GOOGLE_API_KEY`           |
+  | `threshold`      | float  | Similaridade mínima aceita para considerar frase no padrão    | `0.8`                      |
+
+- **Métodos Principais / Main Methods:**
+  1. `check(text: str) -> List[Dict[str, Any]]`
+     - _Entrada:_ Texto livre.
+     - _Saída:_ Lista de sentenças com similaridade abaixo do limiar.
 
 ---
 
@@ -260,7 +293,8 @@ docs-cli report_html --input_file evaluation_results.json --output_file coverage
 |------------|--------|-------------------------------------------------------------|---------------|
 | 2025-06-04 | 1.0    | Criação inicial de Agents.md contendo 3 definições de agente | Paulo Duarte  |
 | 2025-06-10 | 1.1    | Adicionado Agent de Reporting e seção de Notas e Best Practices | Paulo Duarte  |
-| `YYYY-MM-DD` | X.Y  | Breve descrição da mudança                                   | Seu Nome      |
+| 2025-06-15 | 1.2    | Adicionado Agent de Verificação de Estilo | Paulo Duarte  |
+| `YYYY-MM-DD` | X.Y  | Breve descrição da mudança      | Seu Nome      |
 
 ---
 

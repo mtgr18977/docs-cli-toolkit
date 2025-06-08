@@ -42,3 +42,31 @@ def test_main_merge_invokes_run_script(monkeypatch, tmp_path):
     docs_tc.main()
     assert called["cmd"] == ["docs-tc-merge-markdown", "docsdir", "out.md"]
 
+
+def test_main_style_check_invokes_run_script(monkeypatch, tmp_path):
+    called = {}
+    def fake_run_script(cmd, verbose=False):
+        called["cmd"] = cmd
+        return True
+    monkeypatch.setattr(docs_tc, "run_script", fake_run_script)
+    monkeypatch.setattr(docs_tc, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(docs_tc, "CONFIG_FILE", tmp_path / "config.json")
+    monkeypatch.setattr(sys, "argv", [
+        "docs_tc.py",
+        "style_check",
+        "in.txt",
+        "style.json",
+        "0.9",
+        "--api_key",
+        "KEY",
+    ])
+    docs_tc.main()
+    assert called["cmd"] == [
+        "docs-tc-style-checker",
+        "in.txt",
+        "style.json",
+        "0.9",
+        "--api_key",
+        "KEY",
+    ]
+

@@ -15,6 +15,7 @@ setup(
         "evaluate_coverage",
         "generate_report",
         "generate_report_html",
+        "style_checker",
     ]
     # Não é necessário entry_points aqui se todos estiverem no pyproject.toml [project.scripts]
     # Não é necessário install_requires aqui se estiver no pyproject.toml [project.dependencies]

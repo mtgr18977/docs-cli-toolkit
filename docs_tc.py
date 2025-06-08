@@ -204,6 +204,13 @@ def main():
     parser_report_html.add_argument("--top_k_chunks", type=int, default=5,
                                     help="Valor de top_k_chunks usado na avaliação (para consistência do relatório, padrão: 5).")
 
+    # --- Subparser para style_checker.py ---
+    parser_style = subparsers.add_parser("style_check", help="Verifica o estilo de um texto.")
+    parser_style.add_argument("input_file", help="Arquivo de texto a ser analisado.")
+    parser_style.add_argument("embeddings_file", help="Arquivo JSON com embeddings do guia de estilo.")
+    parser_style.add_argument("threshold", type=float, default=0.8, help="Similaridade mínima (padrão: 0.8).")
+    parser_style.add_argument("--api_key", help="Chave da API opcional.")
+
     # --- Subparser para o fluxo completo ---
     parser_full_flow = subparsers.add_parser("full_flow", help="Executa o fluxo completo de processamento e avaliação.")
     parser_full_flow.add_argument("doc_input_dir", help="Diretório de entrada dos arquivos .md originais.")
@@ -256,7 +263,8 @@ def main():
         "clean_csv": "docs-tc-clean-csv",
         "evaluate": "docs-tc-evaluate-coverage",
         "report_md": "docs-tc-generate-report-md",
-        "report_html": "docs-tc-generate-report-html"
+        "report_html": "docs-tc-generate-report-html",
+        "style_check": "docs-tc-style-checker"
     }
 
     if args.command == "merge":
@@ -300,6 +308,16 @@ def main():
             args.output_file,
             str(args.top_k_chunks),
         ], verbose=args.verbose)
+    elif args.command == "style_check":
+        command_args = [
+            SCRIPT_MAP["style_check"],
+            args.input_file,
+            args.embeddings_file,
+            str(args.threshold),
+        ]
+        if args.api_key:
+            command_args.extend(["--api_key", args.api_key])
+        run_script(command_args, verbose=args.verbose)
     elif args.command == "full_flow":
         print("🚀 Iniciando fluxo completo...")
         def run_step_or_exit(step_command_args):
