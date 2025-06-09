@@ -46,6 +46,7 @@ docs-tc-clean-csv = "limpa_csv:cli_main"
 docs-tc-evaluate-coverage = "evaluate_coverage:cli_main"
 docs-tc-generate-report-md = "generate_report:cli_main"
 docs-tc-generate-report-html = "generate_report_html:cli_main"
+docs-tc-style-checker = "style_checker:cli_main"
 
 [project.urls]
 Homepage = "https://github.com/seu-usuario/docs-cli-toolkit"
