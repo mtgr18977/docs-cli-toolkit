@@ -6,6 +6,11 @@ import subprocess
 import sys
 import os
 import json
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - fallback if dotenv is missing
+    def load_dotenv(*_args, **_kwargs):
+        return None
 from pathlib import Path
 
 # Nomes de arquivo padrão intermediários e finais
@@ -86,6 +91,7 @@ def run_script(command_args, verbose=False):
 
 
 def main():
+    load_dotenv()
     parser = argparse.ArgumentParser(description="Docs Toolkit CLI - Orquestrador de scripts de processamento de documentação.")
     
     # Adiciona argumento global para a chave da API
@@ -145,8 +151,8 @@ def main():
     parser_generate.add_argument(
         "--provider",
         choices=["gemini", "deepinfra", "maritaca", "openai"],
-        default="gemini",
-        help="Provedor de embeddings: gemini (padrão), deepinfra, maritaca ou openai.",
+        default=None,
+        help="Provedor de embeddings (detectado automaticamente se omitido).",
     )
     parser_generate.add_argument(
         "--deepinfra-api-key",
@@ -273,10 +279,11 @@ def main():
         run_script([SCRIPT_MAP["extract"], args.input_file, args.output_file], verbose=args.verbose)
     elif args.command == "generate_embeddings":
         command_args = [SCRIPT_MAP["generate_embeddings"], args.input_file, args.output_file]
-        if api_key:
+        provider_env = "openai" if os.getenv("OPENAI_API_KEY") else "gemini"
+        chosen_provider = args.provider or provider_env
+        command_args.extend(["--provider", chosen_provider])
+        if chosen_provider == "gemini" and api_key:
             command_args.extend(["--gemini-api-key", api_key])
-        if hasattr(args, "provider") and args.provider:
-            command_args.extend(["--provider", args.provider])
         if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
             command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
         if hasattr(args, "openai_api_key") and args.openai_api_key:
@@ -330,8 +337,15 @@ def main():
         run_step_or_exit([SCRIPT_MAP["extract"], args.corpus_file, args.raw_docs_file])
         
         # Adiciona a chave da API ao comando generate_embeddings se fornecida
-        generate_embeddings_args = [SCRIPT_MAP["generate_embeddings"], args.raw_docs_file, args.embeddings_file]
-        if api_key:
+        provider_env = "openai" if os.getenv("OPENAI_API_KEY") else "gemini"
+        generate_embeddings_args = [
+            SCRIPT_MAP["generate_embeddings"],
+            args.raw_docs_file,
+            args.embeddings_file,
+            "--provider",
+            provider_env,
+        ]
+        if provider_env == "gemini" and api_key:
             generate_embeddings_args.extend(["--gemini-api-key", api_key])
         run_step_or_exit(generate_embeddings_args)
         
@@ -382,11 +396,16 @@ def main():
             elif step == "generate_embeddings":
                 if not os.path.exists(current_raw_docs_file):
                      current_raw_docs_file = input(f"Arquivo Raw Docs ({current_raw_docs_file}) não encontrado. Informe o caminho correto: ")
-                command_args = [SCRIPT_MAP["generate_embeddings"], current_raw_docs_file, current_embeddings_file]
-                if api_key:
+                provider_env = "openai" if os.getenv("OPENAI_API_KEY") else "gemini"
+                command_args = [
+                    SCRIPT_MAP["generate_embeddings"],
+                    current_raw_docs_file,
+                    current_embeddings_file,
+                    "--provider",
+                    provider_env,
+                ]
+                if provider_env == "gemini" and api_key:
                     command_args.extend(["--gemini-api-key", api_key])
-                if hasattr(args, "provider") and args.provider:
-                    command_args.extend(["--provider", args.provider])
                 if hasattr(args, "deepinfra_api_key") and args.deepinfra_api_key:
                     command_args.extend(["--deepinfra-api-key", args.deepinfra_api_key])
                 if hasattr(args, "openai_api_key") and args.openai_api_key:
