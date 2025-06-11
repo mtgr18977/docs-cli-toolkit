@@ -6,6 +6,12 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 import time
+from typing import Callable
+
+try:
+    import openai  # type: ignore
+except Exception:  # pragma: no cover
+    openai = None  # type: ignore
 import numpy as np  # Para cálculo de similaridade de cosseno
 import re  # Para manipulação de texto e divisão de frases
 import argparse  # Adicionado para parsing de argumentos CLI
@@ -14,19 +20,16 @@ import sys  # Adicionado para sys.exit
 from utils import (
     clean_text_for_embedding,
     generate_embedding_with_retry,
+    generate_openai_embedding,
     GEMINI_EMBEDDING_MODEL,
+    OPENAI_EMBEDDING_MODEL,
 )
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-# --- Configuração da API do Google Gemini (igual ao generate_embeddings.py) ---
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("A variável de ambiente GOOGLE_API_KEY não está configurada.")
-# genai.configure(api_key=GOOGLE_API_KEY)  # Removido porque não existe em google.generativeai
-os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY  # Garante que a variável de ambiente está definida
-EMBEDDING_MODEL = GEMINI_EMBEDDING_MODEL
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # Limite de caracteres para o embedding, para evitar exceder o limite de tokens da API
 EMBEDDING_TEXT_MAX_LENGTH = 1024
@@ -75,10 +78,15 @@ def get_relevant_chunks(query_embedding, processed_chunks, top_k=5):
     return similarities[:top_k]
 
 # MODIFICADO: Adicionado output_json_path como parâmetro
-def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
-                      chunks_filepath="processed_chunks_with_embeddings.json",
-                      top_k_chunks=5,
-                      output_json_path="evaluation_results.json"): # MODIFICADO: parâmetro para nome do arquivo de saída
+def evaluate_coverage(
+    qa_filepath: str = "gartner_filtrado_processed.csv",
+    chunks_filepath: str = "processed_chunks_with_embeddings.json",
+    top_k_chunks: int = 5,
+    output_json_path: str = "evaluation_results.json",
+    provider: str | None = None,
+    gemini_api_key: str | None = None,
+    openai_api_key: str | None = None,
+) -> bool:
     """
     Avalia a cobertura da documentação usando um arquivo CSV de perguntas e respostas ideais.
     A avaliação considera a similaridade de frases da resposta ideal com os chunks relevantes.
@@ -105,8 +113,26 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
     # Filtrar chunks que não têm embedding válido (se houver algum)
     processed_chunks = [c for c in processed_chunks if c.get('embedding') is not None]
     if not processed_chunks:
-        print("Erro: Nenhum chunk com embedding válido encontrado após o carregamento. Verifique o arquivo de chunks com embeddings.")
+        print(
+            "Erro: Nenhum chunk com embedding válido encontrado após o carregamento. Verifique o arquivo de chunks com embeddings."
+        )
         return False
+
+    # Determina o provedor a ser usado
+    chosen_provider = (
+        provider or ("openai" if (openai_api_key or OPENAI_API_KEY) else "gemini")
+    ).lower()
+    actual_gemini_key = gemini_api_key or GOOGLE_API_KEY
+    actual_openai_key = openai_api_key or OPENAI_API_KEY
+
+    if chosen_provider == "openai":
+        if not actual_openai_key:
+            raise ValueError("OPENAI_API_KEY nao configurada")
+        embed_func: Callable[[str], list | None] = lambda txt: generate_openai_embedding(txt, actual_openai_key)
+    else:
+        if not actual_gemini_key:
+            raise ValueError("GOOGLE_API_KEY nao configurada")
+        embed_func = lambda txt: generate_embedding_with_retry(txt, actual_gemini_key, model=GEMINI_EMBEDDING_MODEL)
 
 
     print(f"Carregando perguntas e respostas de '{qa_filepath}'...")
@@ -150,11 +176,7 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
         question_clean = clean_text_for_embedding(question)
         if len(question_clean) > EMBEDDING_TEXT_MAX_LENGTH:
             question_clean = question_clean[:EMBEDDING_TEXT_MAX_LENGTH]
-        query_embedding = generate_embedding_with_retry(
-            question_clean,
-            GOOGLE_API_KEY,
-            model=EMBEDDING_MODEL,
-        )
+        query_embedding = embed_func(question_clean)
         if query_embedding is None:
             print(f"  Falha ao gerar embedding para a pergunta. Pulando.")
             evaluation_results.append({
@@ -200,11 +222,7 @@ def evaluate_coverage(qa_filepath="gartner_filtrado_processed.csv",
                 sentence_clean = clean_text_for_embedding(ideal_sentence)
                 if len(sentence_clean) > EMBEDDING_TEXT_MAX_LENGTH:
                     sentence_clean = sentence_clean[:EMBEDDING_TEXT_MAX_LENGTH]
-                sentence_embedding = generate_embedding_with_retry(
-                    sentence_clean,
-                    GOOGLE_API_KEY,
-                    model=EMBEDDING_MODEL,
-                )
+                sentence_embedding = embed_func(sentence_clean)
 
                 sentence_covered_by_chunk = False
                 best_similarity_for_sentence = 0.0
@@ -289,13 +307,23 @@ def cli_main():
     parser.add_argument("embeddings_filepath", help="Caminho para o arquivo JSON de chunks processados com embeddings.")
     parser.add_argument("-k", "--top_k_chunks", type=int, default=5, help="Número de chunks mais relevantes a considerar (padrão: 5).")
     parser.add_argument("-o", "--output", default="evaluation_results.json", help="Arquivo de saída para os resultados da avaliação (padrão: evaluation_results.json).")
+    parser.add_argument(
+        "--provider",
+        choices=["gemini", "openai"],
+        help="Provedor usado para gerar embeddings das perguntas (detectado automaticamente).",
+    )
+    parser.add_argument("--gemini-api-key", help="Chave da API do Google Gemini (opcional)")
+    parser.add_argument("--openai-api-key", help="Chave da API OpenAI (opcional)")
     args = parser.parse_args()
 
     success = evaluate_coverage(
         qa_filepath=args.qa_filepath,
         chunks_filepath=args.embeddings_filepath,
         top_k_chunks=args.top_k_chunks,
-        output_json_path=args.output
+        output_json_path=args.output,
+        provider=args.provider,
+        gemini_api_key=args.gemini_api_key,
+        openai_api_key=args.openai_api_key,
     )
     if not success:
         print("\nA avaliação de cobertura da documentação falhou.")

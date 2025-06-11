@@ -37,11 +37,13 @@ A ferramenta oferece três maneiras de configurar as chaves das APIs do Google G
 
 3. **Via Variável de Ambiente:**
    Crie um arquivo `.env` no diretório do projeto:
-   ```
-   GOOGLE_API_KEY=sua-chave-gemini
-   DEEPINFRA_API_KEY=sua-chave-deepinfra
-   OPENAI_API_KEY=sua-chave-openai
+ ```
+  GOOGLE_API_KEY=sua-chave-gemini
+  DEEPINFRA_API_KEY=sua-chave-deepinfra
+  OPENAI_API_KEY=sua-chave-openai
   ```
+  Um arquivo `/.env.example` está disponível com esse formato.
+  Se você não especificar `--provider`, o comando escolhe automaticamente `openai` quando `OPENAI_API_KEY` estiver definido; caso contrário usa o Gemini.
 
 ## Comandos Disponíveis
 

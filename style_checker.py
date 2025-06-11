@@ -1,9 +1,16 @@
 import json
 import os
+try:
+    from dotenv import load_dotenv
+except Exception:  # pragma: no cover - fallback if dotenv not installed
+    def load_dotenv(*_args, **_kwargs):
+        return None
 import re
 import argparse
 import sys
 from typing import List, Dict, Any
+
+load_dotenv()
 
 
 from utils import (
