@@ -1,4 +1,9 @@
 # generate_report_html.py
+#
+# Observação de manutenção: caso o relatório HTML cresça em complexidade,
+# avalie substituir as f-strings por uma biblioteca de templates (ex.: Jinja2)
+# para facilitar a manutenção. A abordagem atual é suficiente para o escopo
+# presente.
 
 import json
 import os
@@ -8,6 +13,12 @@ import sys      # Make sure sys is imported
 
 # ... (keep your generate_html_report function as is) ...
 def generate_html_report(evaluation_json_path="evaluation_results.json", output_html_path="coverage_report.html", top_k_chunks=5):
+    """Gera um relatório HTML a partir do JSON de avaliação.
+
+    Para evoluções futuras, considere migrar para uma solução de
+    templates como Jinja2. A versão atual usa f-strings por ser simples
+    e direta para o escopo presente.
+    """
     # ... (your existing code for this function)
     if not os.path.exists(evaluation_json_path):
         print(f"Erro: O arquivo JSON de avaliação '{evaluation_json_path}' não foi encontrado. Execute 'evaluate_coverage.py' primeiro.")
