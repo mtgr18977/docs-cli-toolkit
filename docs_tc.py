@@ -130,24 +130,66 @@ def main():
     )
 
     # --- Subparser para merge_markdown.py ---
-    parser_merge = subparsers.add_parser("merge", help="Consolida arquivos Markdown de um diretório.")
-    parser_merge.add_argument("input_dir", help="Diretório de entrada contendo os arquivos .md.")
-    parser_merge.add_argument("--output_file", default=DEFAULT_CORPUS_CONSOLIDATED,
-                              help=f"Arquivo de saída para o Markdown consolidado (padrão: {DEFAULT_CORPUS_CONSOLIDATED}).")
+    parser_merge = subparsers.add_parser(
+        "merge",
+        help="Consolida arquivos Markdown de um diretório.",
+    )
+    parser_merge.add_argument(
+        "input_dir",
+        help="Diretório de entrada contendo os arquivos .md.",
+    )
+    parser_merge.add_argument(
+        "output_file",
+        nargs="?",
+        default=DEFAULT_CORPUS_CONSOLIDATED,
+        help=(
+            f"Arquivo de saída para o Markdown consolidado (padrão: {DEFAULT_CORPUS_CONSOLIDATED})."
+        ),
+    )
 
     # --- Subparser para extract_data_from_markdown.py ---
-    parser_extract = subparsers.add_parser("extract", help="Extrai dados estruturados do Markdown consolidado.")
-    parser_extract.add_argument("--input_file", default=DEFAULT_CORPUS_CONSOLIDATED,
-                                help=f"Arquivo Markdown consolidado de entrada (padrão: {DEFAULT_CORPUS_CONSOLIDATED}).")
-    parser_extract.add_argument("--output_file", default=DEFAULT_RAW_DOCS,
-                                help=f"Arquivo JSON de saída para os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
+    parser_extract = subparsers.add_parser(
+        "extract",
+        help="Extrai dados estruturados do Markdown consolidado.",
+    )
+    parser_extract.add_argument(
+        "input_file",
+        nargs="?",
+        default=DEFAULT_CORPUS_CONSOLIDATED,
+        help=(
+            f"Arquivo Markdown consolidado de entrada (padrão: {DEFAULT_CORPUS_CONSOLIDATED})."
+        ),
+    )
+    parser_extract.add_argument(
+        "output_file",
+        nargs="?",
+        default=DEFAULT_RAW_DOCS,
+        help=(
+            f"Arquivo JSON de saída para os documentos brutos (padrão: {DEFAULT_RAW_DOCS})."
+        ),
+    )
 
     # --- Subparser para generate_embeddings.py ---
-    parser_generate = subparsers.add_parser("generate_embeddings", help="Gera embeddings para os documentos processados.")
-    parser_generate.add_argument("--input_file", default=DEFAULT_RAW_DOCS,
-                                 help=f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS}).")
-    parser_generate.add_argument("--output_file", default=DEFAULT_EMBEDDINGS,
-                                 help=f"Arquivo JSON de saída para os embeddings (padrão: {DEFAULT_EMBEDDINGS}).")
+    parser_generate = subparsers.add_parser(
+        "generate_embeddings",
+        help="Gera embeddings para os documentos processados.",
+    )
+    parser_generate.add_argument(
+        "input_file",
+        nargs="?",
+        default=DEFAULT_RAW_DOCS,
+        help=(
+            f"Arquivo JSON de entrada com os documentos brutos (padrão: {DEFAULT_RAW_DOCS})."
+        ),
+    )
+    parser_generate.add_argument(
+        "output_file",
+        nargs="?",
+        default=DEFAULT_EMBEDDINGS,
+        help=(
+            f"Arquivo JSON de saída para os embeddings (padrão: {DEFAULT_EMBEDDINGS})."
+        ),
+    )
     parser_generate.add_argument(
         "--provider",
         choices=["gemini", "deepinfra", "maritaca", "openai"],
@@ -193,22 +235,62 @@ def main():
                                  help=f"Arquivo de saída para os resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS}).")
 
     # --- Subparser para generate_report.py (Markdown) ---
-    parser_report_md = subparsers.add_parser("report_md", help="Gera o relatório de cobertura em Markdown.")
-    parser_report_md.add_argument("--input_file", default=DEFAULT_EVAL_RESULTS,
-                                  help=f"Arquivo JSON de entrada com os resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS}).")
-    parser_report_md.add_argument("--output_file", default=DEFAULT_MD_REPORT,
-                                  help=f"Arquivo Markdown de saída para o relatório (padrão: {DEFAULT_MD_REPORT}).")
-    parser_report_md.add_argument("--top_k_chunks", type=int, default=5,
-                                  help="Valor de top_k_chunks usado na avaliação (para consistência do relatório, padrão: 5).")
+    parser_report_md = subparsers.add_parser(
+        "report_md",
+        help="Gera o relatório de cobertura em Markdown.",
+    )
+    parser_report_md.add_argument(
+        "input_file",
+        nargs="?",
+        default=DEFAULT_EVAL_RESULTS,
+        help=(
+            f"Arquivo JSON de entrada com os resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS})."
+        ),
+    )
+    parser_report_md.add_argument(
+        "output_file",
+        nargs="?",
+        default=DEFAULT_MD_REPORT,
+        help=(
+            f"Arquivo Markdown de saída para o relatório (padrão: {DEFAULT_MD_REPORT})."
+        ),
+    )
+    parser_report_md.add_argument(
+        "top_k_chunks",
+        nargs="?",
+        type=int,
+        default=5,
+        help="Valor de top_k_chunks usado na avaliação (para consistência do relatório, padrão: 5).",
+    )
 
     # --- Subparser para generate_report_html.py (HTML) ---
-    parser_report_html = subparsers.add_parser("report_html", help="Gera o relatório de cobertura em HTML.")
-    parser_report_html.add_argument("--input_file", default=DEFAULT_EVAL_RESULTS,
-                                    help=f"Arquivo JSON de entrada com os resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS}).")
-    parser_report_html.add_argument("--output_file", default=DEFAULT_HTML_REPORT,
-                                    help=f"Arquivo HTML de saída para o relatório (padrão: {DEFAULT_HTML_REPORT}).")
-    parser_report_html.add_argument("--top_k_chunks", type=int, default=5,
-                                    help="Valor de top_k_chunks usado na avaliação (para consistência do relatório, padrão: 5).")
+    parser_report_html = subparsers.add_parser(
+        "report_html",
+        help="Gera o relatório de cobertura em HTML.",
+    )
+    parser_report_html.add_argument(
+        "input_file",
+        nargs="?",
+        default=DEFAULT_EVAL_RESULTS,
+        help=(
+            f"Arquivo JSON de entrada com os resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS})."
+        ),
+    )
+    parser_report_html.add_argument(
+        "output_file",
+        nargs="?",
+        default=DEFAULT_HTML_REPORT,
+        help=(
+            f"Arquivo HTML de saída para o relatório (padrão: {DEFAULT_HTML_REPORT})."
+        ),
+    )
+    parser_report_html.add_argument(
+        "top_k_chunks",
+        nargs="?",
+        type=int,
+        default=5,
+        help="Valor de top_k_chunks usado na avaliação (para consistência do relatório, padrão: 5).",
+    )
 
     # --- Subparser para style_checker.py ---
     parser_style = subparsers.add_parser("style_check", help="Verifica o estilo de um texto.")

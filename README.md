@@ -50,25 +50,25 @@ A ferramenta oferece três maneiras de configurar as chaves das APIs do Google G
 ### 1. Merge de Documentos
 Consolida múltiplos arquivos Markdown em um único arquivo:
 ```bash
-docs-cli merge <diretório_entrada> [--output_file arquivo_saída.md]
+docs-cli merge <diretório_entrada> [arquivo_saída.md]
 ```
 
 ### 2. Extração de Dados
 Extrai dados estruturados do Markdown consolidado:
 ```bash
-docs-cli extract [--input_file arquivo_entrada.md] [--output_file arquivo_saída.json]
+docs-cli extract [arquivo_entrada.md] [arquivo_saída.json]
 ```
 
 ### 3. Geração de Embeddings
 Gera embeddings para os documentos processados:
 ```bash
 # Usando Gemini (padrão)
-docs-cli generate_embeddings [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
+docs-cli generate_embeddings [arquivo_entrada.json] [arquivo_saída.json]
 
 # Usando DeepInfra/Maritaca
-docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave" [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
+docs-cli generate_embeddings --provider deepinfra --deepinfra-api-key "sua-chave" [arquivo_entrada.json] [arquivo_saída.json]
 # Usando OpenAI
-docs-cli generate_embeddings --provider openai --openai-api-key "sua-chave" [--input_file arquivo_entrada.json] [--output_file arquivo_saída.json]
+docs-cli generate_embeddings --provider openai --openai-api-key "sua-chave" [arquivo_entrada.json] [arquivo_saída.json]
 ```
 
 ### 4. Limpeza de CSV
@@ -111,10 +111,10 @@ docs-cli evaluate <arquivo_qa.csv> <arquivo_embeddings.json> [-k N] [-o arquivo_
 Gera relatórios em Markdown e HTML:
 ```bash
 # Relatório em Markdown
-docs-cli report_md [--input_file arquivo_entrada.json] [--output_file relatório.md] [--top_k_chunks N]
+docs-cli report_md [arquivo_entrada.json] [relatório.md] [top_k_chunks]
 
 # Relatório em HTML
-docs-cli report_html [--input_file arquivo_entrada.json] [--output_file relatório.html] [--top_k_chunks N]
+docs-cli report_html [arquivo_entrada.json] [relatório.html] [top_k_chunks]
 ```
 
 ### 7. Fluxo Completo
@@ -154,10 +154,10 @@ docs-cli --api "chave-temporária" custom_flow generate_embeddings
 ### Geração de Relatórios
 ```bash
 # Gerar relatório em Markdown
-docs-cli report_md --input_file evaluation_results.json --output_file coverage.md
+docs-cli report_md evaluation_results.json coverage.md
 
 # Gerar relatório em HTML
-docs-cli report_html --input_file evaluation_results.json --output_file coverage.html
+docs-cli report_html evaluation_results.json coverage.html
 ```
 
 ## Arquivos Intermediários

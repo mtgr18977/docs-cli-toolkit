@@ -38,7 +38,7 @@ def test_main_merge_invokes_run_script(monkeypatch, tmp_path):
     # Redirect config file to temp directory to avoid writing to real home
     monkeypatch.setattr(docs_tc, "CONFIG_DIR", tmp_path)
     monkeypatch.setattr(docs_tc, "CONFIG_FILE", tmp_path / "config.json")
-    monkeypatch.setattr(sys, "argv", ["docs_tc.py", "merge", "docsdir", "--output_file", "out.md"])
+    monkeypatch.setattr(sys, "argv", ["docs_tc.py", "merge", "docsdir", "out.md"])
     docs_tc.main()
     assert called["cmd"] == ["docs-tc-merge-markdown", "docsdir", "out.md"]
 
