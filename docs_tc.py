@@ -232,9 +232,75 @@ def main():
 
 
     # --- Subparser para fluxo customizado ---
-    parser_custom_flow = subparsers.add_parser("custom_flow", help="Executa uma sequência customizada de scripts.")
-    parser_custom_flow.add_argument("steps", nargs='+', choices=['merge', 'extract', 'generate_embeddings', 'clean_csv', 'evaluate', 'report_md', 'report_html'],
-                                    help="Sequência de etapas a serem executadas (ex: merge extract generate_embeddings).")
+    parser_custom_flow = subparsers.add_parser(
+        "custom_flow",
+        help="Executa uma sequência customizada de scripts sem interação.",
+    )
+    parser_custom_flow.add_argument(
+        "steps",
+        nargs="+",
+        choices=[
+            "merge",
+            "extract",
+            "generate_embeddings",
+            "clean_csv",
+            "evaluate",
+            "report_md",
+            "report_html",
+        ],
+        help="Sequência de etapas a serem executadas (ex: merge extract generate_embeddings).",
+    )
+    parser_custom_flow.add_argument(
+        "--doc_input_dir",
+        default="docs",
+        help="Diretório de entrada para a etapa 'merge' (padrão: docs)",
+    )
+    parser_custom_flow.add_argument(
+        "--qa_input_file",
+        default="qa-data.csv",
+        help="Arquivo CSV original para 'clean_csv' (padrão: qa-data.csv)",
+    )
+    parser_custom_flow.add_argument(
+        "--corpus_file",
+        default=DEFAULT_CORPUS_CONSOLIDATED,
+        help=f"Arquivo de saída para a etapa 'merge' e entrada de 'extract' (padrão: {DEFAULT_CORPUS_CONSOLIDATED})",
+    )
+    parser_custom_flow.add_argument(
+        "--raw_docs_file",
+        default=DEFAULT_RAW_DOCS,
+        help=f"Arquivo JSON de saída para 'extract' e entrada de 'generate_embeddings' (padrão: {DEFAULT_RAW_DOCS})",
+    )
+    parser_custom_flow.add_argument(
+        "--embeddings_file",
+        default=DEFAULT_EMBEDDINGS,
+        help=f"Arquivo de embeddings (padrão: {DEFAULT_EMBEDDINGS})",
+    )
+    parser_custom_flow.add_argument(
+        "--cleaned_qa_file",
+        default=DEFAULT_QA_PROCESSED,
+        help=f"CSV de saída da etapa 'clean_csv' (padrão: {DEFAULT_QA_PROCESSED})",
+    )
+    parser_custom_flow.add_argument(
+        "--eval_results_file",
+        default=DEFAULT_EVAL_RESULTS,
+        help=f"Arquivo de resultados da avaliação (padrão: {DEFAULT_EVAL_RESULTS})",
+    )
+    parser_custom_flow.add_argument(
+        "--md_report_file",
+        default=DEFAULT_MD_REPORT,
+        help=f"Arquivo Markdown do relatório (padrão: {DEFAULT_MD_REPORT})",
+    )
+    parser_custom_flow.add_argument(
+        "--html_report_file",
+        default=DEFAULT_HTML_REPORT,
+        help=f"Arquivo HTML do relatório (padrão: {DEFAULT_HTML_REPORT})",
+    )
+    parser_custom_flow.add_argument(
+        "--eval_top_k",
+        type=int,
+        default=5,
+        help="Valor de top_k a ser utilizado na avaliação e relatórios",
+    )
 
     args = parser.parse_args()
 
@@ -372,12 +438,11 @@ def main():
 
     elif args.command == "custom_flow":
         print(f"▶️ Iniciando fluxo customizado: {' -> '.join(args.steps)}")
-        current_corpus_file = DEFAULT_CORPUS_CONSOLIDATED
-        current_raw_docs_file = DEFAULT_RAW_DOCS
-        current_embeddings_file = DEFAULT_EMBEDDINGS
-        current_cleaned_qa_file = DEFAULT_QA_PROCESSED
-        current_eval_results_file = DEFAULT_EVAL_RESULTS
-        default_eval_top_k = 5
+        current_corpus_file = args.corpus_file
+        current_raw_docs_file = args.raw_docs_file
+        current_embeddings_file = args.embeddings_file
+        current_cleaned_qa_file = args.cleaned_qa_file
+        current_eval_results_file = args.eval_results_file
 
         def run_custom_step_or_exit(step_command_args):
             if run_script(step_command_args, verbose=args.verbose) is None:
@@ -387,15 +452,18 @@ def main():
         for step in args.steps:
             print(f"\n--- Executando etapa: {step} ---")
             if step == "merge":
-                doc_input_dir = input("Por favor, informe o diretório de entrada para 'merge' (pressione Enter para usar 'docs' como padrão): ") or "docs"
-                run_custom_step_or_exit([SCRIPT_MAP["merge"], doc_input_dir, current_corpus_file])
+                run_custom_step_or_exit([
+                    SCRIPT_MAP["merge"],
+                    args.doc_input_dir,
+                    current_corpus_file,
+                ])
             elif step == "extract":
-                 if not os.path.exists(current_corpus_file):
-                     current_corpus_file = input(f"Arquivo Corpus ({current_corpus_file}) não encontrado. Informe o caminho correto: ")
-                 run_custom_step_or_exit([SCRIPT_MAP["extract"], current_corpus_file, current_raw_docs_file])
+                run_custom_step_or_exit([
+                    SCRIPT_MAP["extract"],
+                    current_corpus_file,
+                    current_raw_docs_file,
+                ])
             elif step == "generate_embeddings":
-                if not os.path.exists(current_raw_docs_file):
-                     current_raw_docs_file = input(f"Arquivo Raw Docs ({current_raw_docs_file}) não encontrado. Informe o caminho correto: ")
                 provider_env = "openai" if os.getenv("OPENAI_API_KEY") else "gemini"
                 command_args = [
                     SCRIPT_MAP["generate_embeddings"],
@@ -412,51 +480,35 @@ def main():
                     command_args.extend(["--openai-api-key", args.openai_api_key])
                 run_custom_step_or_exit(command_args)
             elif step == "clean_csv":
-                qa_input_file = input("Por favor, informe o arquivo CSV de Q&A original para 'clean_csv' (pressione Enter para usar 'qa-data.csv'): ") or "qa-data.csv"
-                command_args = [SCRIPT_MAP["clean_csv"], qa_input_file]
-                
-                # Adicionar argumentos opcionais se fornecidos
-                if hasattr(args, "output_file") and args.output_file:
-                    command_args.extend(["--output_file", args.output_file])
-                if hasattr(args, "question_col") and args.question_col:
-                    command_args.extend(["--question_col", args.question_col])
-                if hasattr(args, "response_col") and args.response_col:
-                    command_args.extend(["--response_col", args.response_col])
-                if hasattr(args, "encoding") and args.encoding:
-                    command_args.extend(["--encoding", args.encoding])
-                if hasattr(args, "min_length") and args.min_length:
-                    command_args.extend(["--min_length", str(args.min_length)])
-                if hasattr(args, "no_clean_text") and args.no_clean_text:
-                    command_args.append("--no_clean_text")
-                if hasattr(args, "invalid_patterns") and args.invalid_patterns:
-                    command_args.extend(["--invalid_patterns"] + args.invalid_patterns)
-                
-                run_custom_step_or_exit(command_args)
+                run_custom_step_or_exit([
+                    SCRIPT_MAP["clean_csv"],
+                    args.qa_input_file,
+                    "--output_file",
+                    current_cleaned_qa_file,
+                ])
             elif step == "evaluate":
-                if not os.path.exists(current_cleaned_qa_file):
-                     current_cleaned_qa_file = input(f"Arquivo QA limpo ({current_cleaned_qa_file}) não encontrado. Informe o caminho correto: ")
-                if not os.path.exists(current_embeddings_file):
-                     current_embeddings_file = input(f"Arquivo de Embeddings ({current_embeddings_file}) não encontrado. Informe o caminho correto: ")
-                eval_k_str = input(f"Informe o top_k para evaluate (pressione Enter para usar {default_eval_top_k}): ") or str(default_eval_top_k)
                 run_custom_step_or_exit([
                     SCRIPT_MAP["evaluate"],
-                    current_cleaned_qa_file, current_embeddings_file,
-                    "-k", eval_k_str,
-                    "-o", current_eval_results_file
+                    current_cleaned_qa_file,
+                    current_embeddings_file,
+                    "-k",
+                    str(args.eval_top_k),
+                    "-o",
+                    current_eval_results_file,
                 ])
             elif step == "report_md":
-                 if not os.path.exists(current_eval_results_file):
-                     current_eval_results_file = input(f"Arquivo de Resultados da Avaliação ({current_eval_results_file}) não encontrado. Informe o caminho correto: ")
-                 report_k_str = input(f"Informe o top_k_chunks para report_md (pressione Enter para usar {default_eval_top_k}, deve coincidir com o usado na avaliação): ") or str(default_eval_top_k)
-                 run_custom_step_or_exit([
-                    SCRIPT_MAP["report_md"], current_eval_results_file, DEFAULT_MD_REPORT, report_k_str
+                run_custom_step_or_exit([
+                    SCRIPT_MAP["report_md"],
+                    current_eval_results_file,
+                    args.md_report_file,
+                    str(args.eval_top_k),
                 ])
             elif step == "report_html":
-                if not os.path.exists(current_eval_results_file):
-                     current_eval_results_file = input(f"Arquivo de Resultados da Avaliação ({current_eval_results_file}) não encontrado. Informe o caminho correto: ")
-                report_k_str = input(f"Informe o top_k_chunks para report_html (pressione Enter para usar {default_eval_top_k}, deve coincidir com o usado na avaliação): ") or str(default_eval_top_k)
                 run_custom_step_or_exit([
-                    SCRIPT_MAP["report_html"], current_eval_results_file, DEFAULT_HTML_REPORT, report_k_str
+                    SCRIPT_MAP["report_html"],
+                    current_eval_results_file,
+                    args.html_report_file,
+                    str(args.eval_top_k),
                 ])
         print("⏹️ Fluxo customizado concluído.")
 
