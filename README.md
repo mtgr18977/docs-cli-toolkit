@@ -126,9 +126,10 @@ docs-cli full_flow <diretório_docs> <arquivo_qa.csv> [--eval_top_k N]
 ### 8. Fluxo Customizado
 Executa uma sequência personalizada de etapas:
 ```bash
-docs-cli custom_flow <etapas...>
+docs-cli custom_flow [opções] <etapas...>
 ```
-Etapas disponíveis: `merge`, `extract`, `generate_embeddings`, `clean_csv`, `evaluate`, `report_md`, `report_html`
+Etapas disponíveis: `merge`, `extract`, `generate_embeddings`, `clean_csv`, `evaluate`, `report_md`, `report_html`.
+Use opções como `--doc_input_dir`, `--corpus_file`, `--raw_docs_file`, `--embeddings_file`, `--cleaned_qa_file` e `--eval_results_file` para informar caminhos personalizados quando necessário.
 
 ## Exemplos de Uso
 
@@ -144,7 +145,7 @@ docs-cli full_flow docs/ qa-data.csv
 ### Fluxo Customizado
 ```bash
 # Executar apenas merge e extração
-docs-cli custom_flow merge extract
+docs-cli custom_flow --doc_input_dir docs --corpus_file corpus.md merge extract
 
 # Executar geração de embeddings com chave API temporária
 docs-cli --api "chave-temporária" custom_flow generate_embeddings
