@@ -78,7 +78,7 @@ docs-cli clean_csv <arquivo_entrada.csv> [--output_file arquivo_saída.csv] [--q
 ```
 
 Opções disponíveis:
-- `--output_file`: Arquivo CSV de saída limpo (padrão: gartner_filtrado_processed.csv)
+- `--output_file`: Arquivo CSV de saída limpo (padrão: qa_data_clean.csv)
 - `--question_col`: Nome da coluna de perguntas (padrão: question)
 - `--response_col`: Nome da coluna de respostas (padrão: response)
 - `--encoding`: Encoding do arquivo CSV (padrão: utf-8)

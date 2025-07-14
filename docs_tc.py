@@ -18,7 +18,7 @@ DEFAULT_CORPUS_CONSOLIDATED = "corpus_consolidated.md"
 DEFAULT_RAW_DOCS = "raw_docs.json"
 DEFAULT_EMBEDDINGS = "embeddings.json" # Conforme sua solicitação
 DEFAULT_EVAL_RESULTS = "evaluation_results.json"
-DEFAULT_QA_PROCESSED = "gartner_filtrado_processed.csv" # Saída do limpa_csv e entrada do evaluate
+DEFAULT_QA_PROCESSED = "qa_data_clean.csv"  # Saída do limpa_csv e entrada do evaluate
 DEFAULT_MD_REPORT = "coverage_report.md"
 DEFAULT_HTML_REPORT = "coverage_report.html"
 

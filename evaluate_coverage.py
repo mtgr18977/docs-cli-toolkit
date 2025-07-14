@@ -79,7 +79,7 @@ def get_relevant_chunks(query_embedding, processed_chunks, top_k=5):
 
 # MODIFICADO: Adicionado output_json_path como parâmetro
 def evaluate_coverage(
-    qa_filepath: str = "gartner_filtrado_processed.csv",
+    qa_filepath: str = "qa_data_clean.csv",
     chunks_filepath: str = "processed_chunks_with_embeddings.json",
     top_k_chunks: int = 5,
     output_json_path: str = "evaluation_results.json",
