@@ -70,3 +70,25 @@ def test_main_style_check_invokes_run_script(monkeypatch, tmp_path):
         "KEY",
     ]
 
+
+def test_main_full_flow_invokes_all_steps(monkeypatch, tmp_path):
+    called = []
+    def fake_run_script(cmd, verbose=False):
+        called.append(cmd)
+        return True
+    monkeypatch.setattr(docs_tc, "run_script", fake_run_script)
+    monkeypatch.setattr(docs_tc, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(docs_tc, "CONFIG_FILE", tmp_path / "config.json")
+    monkeypatch.setattr(sys, "argv", ["docs_tc.py", "full_flow", "docs", "qa.csv"])
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    docs_tc.main()
+    expected = [
+        ["docs-tc-merge-markdown", "docs", docs_tc.DEFAULT_CORPUS_CONSOLIDATED],
+        ["docs-tc-clean-csv", "qa.csv", docs_tc.DEFAULT_QA_PROCESSED],
+        ["docs-tc-extract-data", docs_tc.DEFAULT_CORPUS_CONSOLIDATED, docs_tc.DEFAULT_RAW_DOCS],
+        ["docs-tc-generate-embeddings", docs_tc.DEFAULT_RAW_DOCS, docs_tc.DEFAULT_EMBEDDINGS, "--provider", "gemini"],
+        ["docs-tc-evaluate-coverage", docs_tc.DEFAULT_QA_PROCESSED, docs_tc.DEFAULT_EMBEDDINGS, "-k", "5", "-o", docs_tc.DEFAULT_EVAL_RESULTS],
+        ["docs-tc-generate-report-md", docs_tc.DEFAULT_EVAL_RESULTS, docs_tc.DEFAULT_MD_REPORT, "5"],
+        ["docs-tc-generate-report-html", docs_tc.DEFAULT_EVAL_RESULTS, docs_tc.DEFAULT_HTML_REPORT, "5"],
+    ]
+    assert called == expected
