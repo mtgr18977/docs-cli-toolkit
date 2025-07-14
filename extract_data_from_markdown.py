@@ -1,4 +1,4 @@
-# Novo ou modificado: extract_consolidated_md_to_raw_json.py
+"""Extrai documentos individuais de um Markdown consolidado para JSON."""
 import re
 import json
 import os
@@ -111,6 +111,7 @@ def extract_metadata_and_content(doc_full_text, default_filepath):
     return title, slug, content
 
 def cli_main():
+    """Executa a extração via interface de linha de comando."""
     import argparse
     parser = argparse.ArgumentParser(description="Extrai dados do arquivo MD consolidado para JSON.")
     parser.add_argument("input_md_path", help="Caminho para o arquivo MD consolidado de entrada.")

@@ -1,3 +1,5 @@
+"""Consolida arquivos Markdown de um diretório em um único documento."""
+
 import os
 import glob
 from pathlib import Path
@@ -68,6 +70,7 @@ def consolidate_markdown_files(input_directory, output_file):
     print(f"- Caracteres: {chars:,}")
 
 def main():
+    """Executa a consolidação de Markdown usando valores padrão."""
     # Configuração dos caminhos
     input_dir = r"docs"  # Diretório onde estão os arquivos .md
     output_file = "corpus_consolidated.md"
@@ -80,6 +83,7 @@ def main():
     consolidate_markdown_files(input_dir, output_file)
 
 def cli_main():
+    """Interface de linha de comando para `consolidate_markdown_files`."""
     import argparse
     parser = argparse.ArgumentParser(description="Consolida arquivos .md de um diretório em um único arquivo.")
     parser.add_argument("input_directory", help="Caminho para o diretório com os arquivos .md")

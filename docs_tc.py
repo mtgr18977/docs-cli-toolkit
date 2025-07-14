@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""Orquestrador da linha de comando principal do Docs CLI Toolkit."""
 
 import argparse
 import subprocess
@@ -91,6 +92,7 @@ def run_script(command_args, verbose=False):
 
 
 def main():
+    """Função principal que interpreta argumentos e despacha subcomandos."""
     load_dotenv()
     parser = argparse.ArgumentParser(description="Docs Toolkit CLI - Orquestrador de scripts de processamento de documentação.")
     

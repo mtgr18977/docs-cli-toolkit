@@ -1,4 +1,4 @@
-# generate_embeddings.py (Atualizado para lidar com a estrutura e com Rate Limiting e incluir slug)
+"""Gera embeddings de documentos usando Gemini, DeepInfra ou OpenAI."""
 
 import json
 import os
@@ -265,6 +265,7 @@ def generate_embeddings_for_docs(
         return False
 
 def cli_main():
+    """Interface de linha de comando para gerar embeddings."""
     import argparse
     parser = argparse.ArgumentParser(description="Gera embeddings para documentos a partir de um JSON.")
     parser.add_argument("input_json_path", help="Caminho para o arquivo JSON de entrada (ex: raw_docs.json).")
