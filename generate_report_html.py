@@ -1,4 +1,5 @@
 # generate_report_html.py
+"""Gera relatório de cobertura em HTML a partir de avaliação JSON."""
 #
 # Observação de manutenção: caso o relatório HTML cresça em complexidade,
 # avalie substituir as f-strings por uma biblioteca de templates (ex.: Jinja2)
@@ -191,6 +192,7 @@ def generate_html_report(evaluation_json_path="evaluation_results.json", output_
 
 # NEW cli_main function
 def cli_main():
+    """Interface CLI para gerar o relatório HTML."""
     parser = argparse.ArgumentParser(description="Gera relatório HTML da avaliação de cobertura.")
     parser.add_argument("input_file", # Changed from evaluation_json_path to match docs_tc.py call
                         help="Arquivo JSON de entrada com os resultados da avaliação (padrão: evaluation_results.json).")

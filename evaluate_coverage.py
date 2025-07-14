@@ -1,4 +1,4 @@
-# evaluate_coverage.py (Versão com avaliação de cobertura por similaridade de frases e CLI)
+"""Avalia a cobertura da documentação usando embeddings e fornece interface CLI."""
 
 import json
 import csv
@@ -302,6 +302,7 @@ def evaluate_coverage(
     return True
 
 def cli_main():
+    """Ponto de entrada de linha de comando para avaliação de cobertura."""
     parser = argparse.ArgumentParser(description="Avalia a cobertura da documentação usando embeddings.")
     parser.add_argument("qa_filepath", help="Caminho para o arquivo CSV de perguntas e respostas ideais.")
     parser.add_argument("embeddings_filepath", help="Caminho para o arquivo JSON de chunks processados com embeddings.")

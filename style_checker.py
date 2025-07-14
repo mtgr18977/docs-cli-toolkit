@@ -1,3 +1,5 @@
+"""Verifica trechos de texto fora do padrão de estilo usando embeddings."""
+
 import json
 import os
 try:
@@ -67,6 +69,7 @@ def check_style(
 
 
 def cli_main() -> None:
+    """Ponto de entrada de linha de comando para verificação de estilo."""
     parser = argparse.ArgumentParser(
         description="Verifica conformidade de estilo de um texto usando embeddings."
     )

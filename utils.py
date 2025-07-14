@@ -1,3 +1,5 @@
+"""Funções utilitárias de limpeza de texto e geração de embeddings."""
+
 import re
 import time
 from typing import Optional

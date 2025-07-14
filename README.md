@@ -84,7 +84,9 @@ Opções disponíveis:
 - `--encoding`: Encoding do arquivo CSV (padrão: utf-8)
 - `--min_length`: Tamanho mínimo para respostas válidas (padrão: 10)
 - `--no_clean_text`: Não limpar o texto das respostas
-- `--invalid_patterns`: Lista de padrões inválidos para remover
+- `--invalid_patterns`: Lista de frases ou expressões a remover. Se não informado,
+  são usados padrões comuns como `"Please select from dropdown"`, `"Click here"`
+  e variações similares.
 
 Exemplos:
 ```bash
@@ -129,7 +131,11 @@ Executa uma sequência personalizada de etapas:
 docs-cli custom_flow [opções] <etapas...>
 ```
 Etapas disponíveis: `merge`, `extract`, `generate_embeddings`, `clean_csv`, `evaluate`, `report_md`, `report_html`.
-Use opções como `--doc_input_dir`, `--corpus_file`, `--raw_docs_file`, `--embeddings_file`, `--cleaned_qa_file` e `--eval_results_file` para informar caminhos personalizados quando necessário.
+Principais opções:
+`--doc_input_dir`, `--qa_input_file`, `--corpus_file`, `--raw_docs_file`,
+`--embeddings_file`, `--cleaned_qa_file`, `--eval_results_file`,
+`--md_report_file`, `--html_report_file` e `--eval_top_k`.
+Use-as para definir caminhos ou parâmetros específicos durante o fluxo.
 
 ## Exemplos de Uso
 

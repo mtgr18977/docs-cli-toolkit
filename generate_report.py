@@ -1,4 +1,4 @@
-# generate_md_report.py
+"""Geração de relatórios Markdown a partir de resultados de avaliação."""
 
 import json
 import os
